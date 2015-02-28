@@ -25,5 +25,16 @@ int main(int argc, char* argv[])
 		for (int j=0; j<n; j++)
 			B(i,j) = rand()/max_ceil;
 
+	double alpha = 1.0;
+	double beta  = 0.0;
+
+	dgemm("N", "N", alpha, A, B, beta, C);
+
+	for (int i=0; i<m; i++)
+	{
+		int j = 0;
+		std::cout << C(i,j) << std::endl;
+	}
+
     return 0;
 }
