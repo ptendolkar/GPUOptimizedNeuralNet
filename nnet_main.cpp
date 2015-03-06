@@ -11,7 +11,7 @@ int main(int argc, char* argv[])
 
 	Matrix A(m,k);
 	Matrix B(k,n);
-	Matrix C(m,n);
+	Matrix C(8, 1);
 
 	srand(86456);
 
