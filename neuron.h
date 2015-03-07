@@ -322,19 +322,23 @@ class Data
 		Matrix y;
 
 	public:
-		Data() : n_data(0), n_feat(0), X(), y() {}
+		int read(std::string, char, Matrix &);
+		int read(std::string, char, Matrix &, size_t &, size_t &);
 
-		int read(char *, char, Matrix &);
-
-		Data make(char *feat_file, char delim)
+		Data (std::string feat_file, std::string resp_file, char delim)
 		{
-			read(feat_file, delim, X);
+			Matrix X;
+			Matrix y;
+			n_data = 0;
+			n_feat = 0;
+			read(feat_file, delim, X, n_data, n_feat);
+			read(resp_file, delim, y);
 		};
 };
 
-int Data::read(char *data_file, char delim, Matrix &A)
+int Data::read(std::string data_file, char delim, Matrix &A)
 {
-	std::fstream input(data_file);
+	std::fstream input(data_file.c_str());
 	std::string  line;
 	int i = 0;
 	int j = 0;
@@ -353,6 +357,7 @@ int Data::read(char *data_file, char delim, Matrix &A)
 			{
 				++j;
 			}
+			x = atof(item.c_str());
 			X.push_back(x);
 		}
 
@@ -360,6 +365,41 @@ int Data::read(char *data_file, char delim, Matrix &A)
 	}
 
 	A.std::vector<double>::swap(X);
+
+	return 0;
+};
+
+int Data::read(std::string data_file, char delim, Matrix &A, size_t &n_row, size_t &n_col)
+{
+	std::fstream input(data_file.c_str());
+	std::string  line;
+	int i = 0;
+	int j = 0;
+
+	std::vector<double> X;
+
+	while (std::getline(input, line))
+	{
+		double x;
+		std::stringstream ss(line);
+		std::string item;
+
+		while (std::getline(ss, item, delim))
+		{
+			if (i == 0)
+			{
+				++j;
+			}
+			x = atof(item.c_str());
+			X.push_back(x);
+		}
+
+		++i;
+	}
+
+	A.std::vector<double>::swap(X);
+	n_row = i;
+	n_col = j;
 
 	return 0;
 };
