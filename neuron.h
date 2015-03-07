@@ -182,7 +182,7 @@ int Network::build(std::vector<size_t> &dim_lay)
 	this->inp_lay = prev_ptr;
 
 	return 0;
-}
+};
 
 // Clear dynamically built network backwards.
 int Network::clear()
@@ -204,7 +204,7 @@ int Network::clear()
 	this->n_lay   = 0;
 
 	return 0;
-}
+};
 
 // Delete layer from existing network.
 int Network::remove(size_t id)
@@ -254,7 +254,7 @@ int Network::remove(size_t id)
 	{
 		std::cout << "Illegal delete: id is outside of possible range." << std::endl;
 	}
-}
+};
 
 // Insert layer into existing network.
 int Network::insert(size_t postn, size_t d_inp)
@@ -315,49 +315,51 @@ int Network::insert(size_t postn, size_t d_inp)
 
 class Data
 {
-	private
-		// n_data is the number of data, n_feat is the size of the feature space
+	private:
 		size_t n_data;
 		size_t n_feat;
-		Matrix X(n_data, n_feat);
-		Matrix y(n_data, 1);
+		Matrix X;
+		Matrix y;
 
-	public
-		read(char *, Matrix &);
+	public:
+		Data() : n_data(0), n_feat(0), X(), y() {}
 
-		make(char *feat_file, char *resp_file)
+		int read(char *, char, Matrix &);
+
+		Data make(char *feat_file, char delim)
 		{
-			Matrix X();
-			Matrix y();
-			read(feat_file, X);
-			read(resp_file, y);
-		}; 
-}
+			read(feat_file, delim, X);
+		};
+};
 
-Class::read(char *data_file, Matrix &A)
+int Data::read(char *data_file, char delim, Matrix &A)
 {
 	std::fstream input(data_file);
 	std::string  line;
 	int i = 0;
 	int j = 0;
 
+	std::vector<double> X;
+
 	while (std::getline(input, line))
 	{
-		double a;
+		double x;
 		std::stringstream ss(line);
+		std::string item;
 
-		while (ss >> a)
+		while (std::getline(ss, item, delim))
 		{
 			if (i == 0)
 			{
 				++j;
 			}
-			A.push_back(a);
+			X.push_back(x);
 		}
 
 		++i;
 	}
 
-	A.nrow(i);
-	A.ncol(i);
-}; 
+	A.std::vector<double>::swap(X);
+
+	return 0;
+};
