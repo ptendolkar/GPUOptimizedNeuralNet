@@ -13,7 +13,7 @@ private:
 	size_t n_col;
 
 public:
-	Matrix() : n_row(0), n_col(0) {}
+	Matrix() : std::vector<double>(), n_row(0), n_col(0) {}
 	Matrix(size_t m, size_t n) : std::vector<double>(m*n), n_row(m), n_col(n) {}
 	Matrix(size_t m, size_t n, double entries) : std::vector<double>(m*n, entries), n_row(m), n_col(n) {}
 
@@ -75,41 +75,53 @@ class Layer : public Matrix
 {
 	private:
 		size_t  iden;
-		Layer   *next_lay;
 		Layer   *prev_lay;
-		Funct   *Phi;
+		Layer   *next_lay;
+		std::vector<Funct *> Phi;
 
 	public:
-		Layer() : Matrix(), iden(0), next_lay(NULL), prev_lay(NULL), Phi(NULL) {}
-		Layer(size_t i, size_t m, size_t n) : Matrix(m,n), iden(i), next_lay(NULL), prev_lay(NULL), Phi(NULL) {}
-		Layer(size_t i, size_t m, size_t n, Layer *inn, Layer *ipp) : Matrix(m,n), iden(i), next_lay(inn), prev_lay(ipp), Phi(NULL) {}
-		Layer(size_t i, size_t m, size_t n, double w, Layer *inn, Layer *ipp) : Matrix(m,n,w), iden(i), next_lay(inn), prev_lay(ipp), Phi(NULL) {}
-		Layer(size_t i, size_t m, size_t n, double w, Layer *inn, Layer *ipp, Funct *f) : Matrix(m,n,w), iden(i), next_lay(inn), prev_lay(ipp), Phi(f) {}
+		Layer() : Matrix(), iden(0), prev_lay((Layer *)NULL), next_lay((Layer *)NULL), Phi() {}
+		Layer(size_t i, size_t m, size_t n) : Matrix(m,n), iden(i), prev_lay((Layer *)NULL), next_lay((Layer *)NULL), Phi(m, (Funct *)NULL) {}
+		Layer(size_t i, size_t m, size_t n, Layer *ipp) : Matrix(m,n), iden(i), prev_lay(ipp), next_lay((Layer *)NULL), Phi(1, (Funct *)NULL) {}
+		Layer(size_t i, size_t m, size_t n, double w, Layer *ipp, Layer *inn) : Matrix(m,n,w), iden(i), prev_lay(ipp), next_lay(inn), Phi(m, (Funct *)NULL) {}
+		Layer(size_t i, size_t m, size_t n, double w, Layer *ipp, Layer *inn, Funct *f) : Matrix(m,n,w), iden(i), prev_lay(ipp), next_lay(inn), Phi(1, f) {}
+
+		Layer(size_t i, size_t m, size_t n, std::vector<double> &w, Layer *ipp, Layer *inn, std::vector<Funct *> &f)
+		{
+			iden = i;
+			prev_lay = ipp;
+			next_lay = inn;
+			Matrix(m,n);
+			std::vector<double>::swap(w);
+			std::vector<Funct *> Phi(m);
+			Phi.std::vector<Funct *>::swap(f);
+		}
 
 		size_t id()    const { return iden; }
-		Layer *next()  const { return next_lay; }
 		Layer *prev()  const { return prev_lay; }
-		Funct *activ() const { return Phi; }
+		Layer *next()  const { return next_lay; }
+		std::vector<Funct *> activ() const { return Phi; }
 
 		Layer(const Layer &lay)
 		{
 			iden     = lay.id();
-			next_lay = lay.next();
 			prev_lay = lay.prev();
+			next_lay = lay.next();
 			Phi      = lay.activ();	
 		};
 
-		Layer id(size_t i)     { iden     = i; }
-		Layer next(Layer *lay) { next_lay = lay; }
-		Layer prev(Layer *lay) { prev_lay = lay; }
-		Layer set_activ(Funct *Psi) { Phi = Psi; }
+		void id(size_t i)     { iden     = i; }
+		void prev(Layer *lay) { prev_lay = lay; }
+		void next(Layer *lay) { next_lay = lay; }
+		void activ(std::vector<Funct *> Psi) { Phi = Psi; }
 
 		void swap(Layer &lay)
 		{
 			Matrix::swap(lay);
 			std::swap(iden, lay.iden);
-			std::swap(next_lay, lay.next_lay);
 			std::swap(prev_lay, lay.prev_lay);
+			std::swap(next_lay, lay.next_lay);
+			Phi.std::vector<Funct *>::swap(lay.Phi);
 		};
 
 		void clearMemory()
@@ -123,65 +135,66 @@ class Network
 {
 	private:
 		size_t n_lay;
-		Layer  *out_lay;
 		Layer  *inp_lay;
+		Layer  *out_lay;
 
 	public:
-		Network() : n_lay(0), out_lay(NULL), inp_lay(NULL) {}
-		Network(size_t i) : n_lay(i), out_lay(NULL), inp_lay(NULL) {}
+		Network() : n_lay(0), inp_lay((Layer *)NULL), out_lay((Layer *)NULL) {}
+		Network(size_t i) : n_lay(i), inp_lay((Layer *)NULL), out_lay((Layer *)NULL) {}
+		Network(std::vector<size_t> &);
 
 		size_t depth() const { return n_lay; }
-		Layer *out()   const { return out_lay; }
 		Layer *inp()   const { return inp_lay; }
+		Layer *out()   const { return out_lay; }
 
 		Network(const Network &net)
 		{
 			n_lay = net.depth();
-			out_lay = net.out();
 			inp_lay = net.inp();
+			out_lay = net.out();
 		}
 
 		~Network()
 		{
 			n_lay   = 0;
-			out_lay = NULL;
-			inp_lay = NULL;
+			inp_lay = (Layer *)NULL;
+			out_lay = (Layer *)NULL;
 		};
 
 		Layer depth(size_t i) { n_lay = i; }
 		Layer inp(Layer *lay) { inp_lay = lay; }
 		Layer out(Layer *lay) { out_lay = lay; }
 
-		int build(std::vector<size_t> &);
 		int clear();
 		int remove(size_t);
 		int insert(size_t, size_t);
 };
 
 // Build network dynamically backwards (head to tail) from the output layer.  Single layer network (e.g. logistic regression) will have NULL input layer pointer,
-// but all networks must have an output.  The first entry of the dimension array is the size of the covariate space.
-int Network::build(std::vector<size_t> &dim_lay)
+// but all networks must have an output.  The first entry of the dimension array is the size of the covariate space, and the last entry is the size of the output space.
+Network::Network(std::vector<size_t> &dim_lay)
 {
-	Layer *prev_ptr = NULL;
-	Layer *next_ptr = NULL;
+	Layer *prev_ptr = (Layer *)NULL;
+	Layer *curn_ptr = (Layer *)NULL;
 
-	this->n_lay   = dim_lay.size();
+	int head_id = dim_lay.size()-1;
 
-	int i = (this->n_lay) - 1;
-	this->out_lay = new Layer((size_t)i, 1, dim_lay[i]);
-	next_ptr      = this->out_lay;
-
-	for (int j=i; j>0; j--)
+	for (int i=head_id; i>0; i--)
 	{
-		prev_ptr = new Layer((size_t)j, dim_lay[j], dim_lay[j-1]);
-		prev_ptr->next(next_ptr);
-		next_ptr->prev(prev_ptr);
-		next_ptr = prev_ptr;
+		curn_ptr = new Layer(i-1, dim_lay[i], dim_lay[i-1], prev_ptr);
+
+		if (out_lay == (Layer *)NULL)
+		{
+			out_lay = curn_ptr;
+		}
+		else
+		{
+			(curn_ptr->prev())->next(curn_ptr);
+			inp_lay = curn_ptr;
+		}
+
+		prev_ptr = curn_ptr;
 	}
-
-	this->inp_lay = prev_ptr;
-
-	return 0;
 };
 
 // Clear dynamically built network backwards.
@@ -207,7 +220,7 @@ int Network::clear()
 };
 
 // Delete layer from existing network.
-int Network::remove(size_t id)
+/* int Network::remove(size_t id)
 {
 	if ((this->inp_lay != (Layer *)NULL) & (id <= (this->out())->ncol()))
 	{
@@ -254,6 +267,8 @@ int Network::remove(size_t id)
 	{
 		std::cout << "Illegal delete: id is outside of possible range." << std::endl;
 	}
+
+	return 0;
 };
 
 // Insert layer into existing network.
@@ -311,7 +326,7 @@ int Network::insert(size_t postn, size_t d_inp)
 	}
 
 	return 0;
-}
+}; */
 
 class Data
 {
@@ -322,18 +337,20 @@ class Data
 		Matrix y;
 
 	public:
+		Data (std::string, std::string, char);
+
 		int read(std::string, char, Matrix &);
 		int read(std::string, char, Matrix &, size_t &, size_t &);
+};
 
-		Data (std::string feat_file, std::string resp_file, char delim)
-		{
-			Matrix X;
-			Matrix y;
-			n_data = 0;
-			n_feat = 0;
-			read(feat_file, delim, X, n_data, n_feat);
-			read(resp_file, delim, y);
-		};
+Data::Data (std::string feat_file, std::string resp_file, char delim)
+{
+	Matrix X;
+	Matrix y;
+	n_data = 0;
+	n_feat = 0;
+	read(feat_file, delim, X, n_data, n_feat);
+	read(resp_file, delim, y);
 };
 
 int Data::read(std::string data_file, char delim, Matrix &A)
