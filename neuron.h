@@ -77,14 +77,16 @@ class Layer : public Matrix
 		size_t  iden;
 		Layer   *prev_lay;
 		Layer   *next_lay;
-		std::vector<Funct *> poten;
-		std::vector<double>  activ;
+		std::vector<Funct *> potn;
+		std::vector<double>  bias;
+		std::vector<double>  flux;
+		std::vector<double>  actv;
 
 	public:
-		Layer() :													  Matrix(),    iden(0), prev_lay((Layer *)NULL), next_lay((Layer *)NULL), poten(), 				   activ()  {}
-		Layer(size_t i, size_t m, size_t n) :                         Matrix(m,n), iden(i), prev_lay((Layer *)NULL), next_lay((Layer *)NULL), poten(m, (Funct *)NULL), activ(m) {}
-		Layer(size_t i, size_t m, size_t n, Layer *ipp) :             Matrix(m,n), iden(i), prev_lay(ipp),           next_lay((Layer *)NULL), poten(m, (Funct *)NULL), activ(m) {}
-		Layer(size_t i, size_t m, size_t n, Layer *ipp, Layer *inn) : Matrix(m,n), iden(i), prev_lay(ipp),           next_lay(inn),           poten(m, (Funct *)NULL), activ(m) {}
+		Layer() :													  Matrix(),    iden(0), prev_lay((Layer *)NULL), next_lay((Layer *)NULL), potn(), 				, bias(),  actv()  {}
+		Layer(size_t i, size_t m, size_t n) :                         Matrix(m,n), iden(i), prev_lay((Layer *)NULL), next_lay((Layer *)NULL), potn(m, (Funct *)NULL), bias(n), actv(m) {}
+		Layer(size_t i, size_t m, size_t n, Layer *ipp) :             Matrix(m,n), iden(i), prev_lay(ipp),           next_lay((Layer *)NULL), potn(m, (Funct *)NULL), bias(n), actv(m) {}
+		Layer(size_t i, size_t m, size_t n, Layer *ipp, Layer *inn) : Matrix(m,n), iden(i), prev_lay(ipp),           next_lay(inn),           potn(m, (Funct *)NULL), bias(n), actv(m) {}
 
 		Layer(size_t i, size_t m, size_t n, std::vector<double> &w, Layer *ipp, Layer *inn, std::vector<Funct *> &f, std::vector<double> &z)
 		{
@@ -92,8 +94,10 @@ class Layer : public Matrix
 			prev_lay = ipp;
 			next_lay = inn;
 			Matrix(m,n);
-			std::vector<Funct *> poten(m);
-			std::vector<double > activ(m);
+			std::vector<Funct *> potn(m);
+			std::vector<double > bias(m);
+			std::vector<double > flux(m);
+			std::vector<double > actv(m);
 			std::vector<double >::swap(w);
 			poten.std::vector<Funct *>::swap(f);
 			activ.std::vector<double >::swap(z);
@@ -101,29 +105,42 @@ class Layer : public Matrix
 
 		Layer(const Layer &lay)
 		{
+			Matrix   = lay.Matrix();
 			iden     = lay.id();
 			prev_lay = lay.prev();
 			next_lay = lay.next();
-			poten    = lay.poten;
-			activ    = lay.activ;
+			potn     = lay.potn;
+			bias     = lay.bias;
+			flux     = lay.flux;
+			actv     = lay.actv;
 		};
 
 		size_t id()    const { return iden; }
 		Layer* prev()  const { return prev_lay; }
 		Layer* next()  const { return next_lay; }
-		Funct* Phi(size_t i) const { return poten[i]; }
-		double   z(size_t i) const { return activ[i]; }
-		std::vector<Funct *> Phi() const { return poten; }
-		std::vector<double >   z() const { return activ; }
+		Funct* f(size_t i) const { return potn[i]; }
+		std::vector<double>  W() const { return (vector)Matrix; }
+		std::vector<Funct *> f() const { return potn; }
+		std::vector<double > b() const { return bias; }
+		std::vector<double > z() const { return flux; }
+		std::vector<double > a() const { return actv; }
 
-
+		void W(std::vector<double> X) { Matrix = X; }
 		void id(size_t i)     { iden     = i; }
 		void prev(Layer *lay) { prev_lay = lay; }
 		void next(Layer *lay) { next_lay = lay; }
-		void Phi(size_t i, Funct *f) { poten[i] = f; }
-		void   z(size_t i, double x) { activ[i] = x; }
-		void Phi(std::vector<Funct *> f) { poten = f; }
-		void   z(std::vector<double > x) { activ = x; }
+		void f(size_t i, Funct *Phi) { potn[i] = Phi; }
+		void b(size_t i, double x)   { bias[i] = x; }
+		void z(size_t i, double x)   { flux[i] = x; }
+		void a(size_t i, double x)   { actv[i] = x; }
+		void f(std::vector<Funct *> Phi) { potn = Phi; }
+		void b(std::vector<double > x)   { bias = x; }
+		void z(std::vector<double > x)   { flux = x; }
+		void a(std::vector<double > x)   { actv = x; }
+		void f_swp(std::vector<Funct *> &Phi) { potn.std::vector<Funct *>::swap(Phi); }
+		void b_swp(std::vector<double > &x)   { bias.std::vector<double >::swap(x); }
+		void z_swp(std::vector<double > &x)   { flux.std::vector<double >::swap(x); }
+		void a_swp(std::vector<double > &x)   { actv.std::vector<double >::swap(x); }
 
 		void swap(Layer &lay)
 		{
@@ -131,8 +148,9 @@ class Layer : public Matrix
 			std::swap(iden, lay.iden);
 			std::swap(prev_lay, lay.prev_lay);
 			std::swap(next_lay, lay.next_lay);
-			poten.std::vector<Funct *>::swap(lay.poten);
-			activ.std::vector<double >::swap(lay.activ);
+			potn.std::vector<Funct *>::swap(lay.potn);
+			bias.std::vector<double >::swap(lay.bias);
+			actv.std::vector<double >::swap(lay.actv);
 		};
 
 		void clearMemory()
