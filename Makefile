@@ -1,11 +1,11 @@
 CXX = g++
 OPENBLAS = /opt/openblas/0.2.3/gnu4/Opteron
-TARGET1 = nnet.o
-
+TARGET1 = test.o
+GSL = /opt/gsl/1.15/gnu4/
 all : $(TARGET1)
 
-$(TARGET1) : nnet_main.cpp
-	$(CXX) -o $(TARGET1) nnet_main.cpp -O3 -I$(OPENBLAS)/include -L$(OPENBLAS)/lib -Wl,-rpath=$(OPENBLAS)/lib -lopenblas
+$(TARGET1) : test_main.cpp
+	$(CXX) -o $(TARGET1) test_main.cpp -O3 -I$(OPENBLAS)/include -I$(GSL)/include -L$(GSL)/lib -L$(OPENBLAS)/lib -Wl,-rpath=$(OPENBLAS)/lib -lopenblas -lgsl -lgslcblas
 
 clean :
 	-rm -f *.o
