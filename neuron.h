@@ -93,8 +93,8 @@ class Layer : public Matrix
 			next_lay = inn;
 			Matrix(m,n);
 			std::vector<Funct *> poten(m);
-			std::vector<double>  activ(m);
-			std::vector<double>::swap(w);
+			std::vector<double > activ(m);
+			std::vector<double >::swap(w);
 			poten.std::vector<Funct *>::swap(f);
 			activ.std::vector<double >::swap(z);
 		}
