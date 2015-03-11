@@ -16,6 +16,7 @@ int main(int argc, char* argv[])
 	dimensions[3] = 1; 
 
 	Network testN(dimensions);
+	testN.remove(0);
 
     return 0;
 }
