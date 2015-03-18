@@ -5,7 +5,7 @@
 #include <fstream>
 #include "matrix.h"
 
-#class Matrix;
+class Matrix;
 
 class Funct 
 {
@@ -40,49 +40,16 @@ class Layer : public Matrix
 		std::vector<double>  actv;
 
 	public:
-		Layer() :													  Matrix(),    iden(0), prev_lay((Layer *)NULL), next_lay((Layer *)NULL), potn(), 				, bias(),  actv()  {}
+		Layer() :													  Matrix(),    iden(0), prev_lay((Layer *)NULL), next_lay((Layer *)NULL), potn(),				  bias(),  actv()  {}
 		Layer(size_t i, size_t m, size_t n) :                         Matrix(m,n), iden(i), prev_lay((Layer *)NULL), next_lay((Layer *)NULL), potn(m, (Funct *)NULL), bias(n), actv(m) {}
 		Layer(size_t i, size_t m, size_t n, Layer *ipp) :             Matrix(m,n), iden(i), prev_lay(ipp),           next_lay((Layer *)NULL), potn(m, (Funct *)NULL), bias(n), actv(m) {}
 		Layer(size_t i, size_t m, size_t n, Layer *ipp, Layer *inn) : Matrix(m,n), iden(i), prev_lay(ipp),           next_lay(inn),           potn(m, (Funct *)NULL), bias(n), actv(m) {}
-
-		Layer(size_t i, size_t m, size_t n, std::vector<double> &w, Layer *ipp, Layer *inn, std::vector<Funct *> &f, std::vector<double> &z)
-		{
-			iden = i;
-			prev_lay = ipp;
-			next_lay = inn;
-			Matrix(m,n);
-			std::vector<Funct *> potn(m);
-			std::vector<double > bias(m);
-			std::vector<double > flux(m);
-			std::vector<double > actv(m);
-			std::vector<double >::swap(w);
-			poten.std::vector<Funct *>::swap(f);
-			activ.std::vector<double >::swap(z);
-		}
-
-		Layer(const Layer &lay)
-		{
-			Matrix   = lay.Matrix();
-			iden     = lay.id();
-			prev_lay = lay.prev();
-			next_lay = lay.next();
-			potn     = lay.potn;
-			bias     = lay.bias;
-			flux     = lay.flux;
-			actv     = lay.actv;
-		};
 
 		size_t id()    const { return iden; }
 		Layer* prev()  const { return prev_lay; }
 		Layer* next()  const { return next_lay; }
 		Funct* f(size_t i) const { return potn[i]; }
-		std::vector<double>  W() const { return (vector)Matrix; }
-		std::vector<Funct *> f() const { return potn; }
-		std::vector<double > b() const { return bias; }
-		std::vector<double > z() const { return flux; }
-		std::vector<double > a() const { return actv; }
 
-		void W(std::vector<double> X) { Matrix = X; }
 		void id(size_t i)     { iden     = i; }
 		void prev(Layer *lay) { prev_lay = lay; }
 		void next(Layer *lay) { next_lay = lay; }
@@ -317,99 +284,6 @@ int Network::insert(size_t postn, size_t n_new)
 	{
 		inp_lay = prev_ptr;
 	}
-
-	return 0;
-};
-
-class Data
-{
-	private:
-		size_t n_data;
-		size_t n_feat;
-		Matrix X;
-		Matrix y;
-
-	public:
-		Data (std::string, std::string, char);
-
-		int read(std::string, char, Matrix &);
-		int read(std::string, char, Matrix &, size_t &, size_t &);
-};
-
-Data::Data (std::string feat_file, std::string resp_file, char delim)
-{
-	Matrix X;
-	Matrix y;
-	n_data = 0;
-	n_feat = 0;
-	read(feat_file, delim, X, n_data, n_feat);
-	read(resp_file, delim, y);
-};
-
-int Data::read(std::string data_file, char delim, Matrix &A)
-{
-	std::fstream input(data_file.c_str());
-	std::string  line;
-	int i = 0;
-	int j = 0;
-
-	std::vector<double> X;
-
-	while (std::getline(input, line))
-	{
-		double x;
-		std::stringstream ss(line);
-		std::string item;
-
-		while (std::getline(ss, item, delim))
-		{
-			if (i == 0)
-			{
-				++j;
-			}
-			x = atof(item.c_str());
-			X.push_back(x);
-		}
-
-		++i;
-	}
-
-	A.std::vector<double>::swap(X);
-
-	return 0;
-};
-
-int Data::read(std::string data_file, char delim, Matrix &A, size_t &n_row, size_t &n_col)
-{
-	std::fstream input(data_file.c_str());
-	std::string  line;
-	int i = 0;
-	int j = 0;
-
-	std::vector<double> X;
-
-	while (std::getline(input, line))
-	{
-		double x;
-		std::stringstream ss(line);
-		std::string item;
-
-		while (std::getline(ss, item, delim))
-		{
-			if (i == 0)
-			{
-				++j;
-			}
-			x = atof(item.c_str());
-			X.push_back(x);
-		}
-
-		++i;
-	}
-
-	A.std::vector<double>::swap(X);
-	n_row = i;
-	n_col = j;
 
 	return 0;
 };

@@ -21,6 +21,9 @@ class Matrix : public std::vector<double>
 		size_t nrow() const {return n_row;}
 		size_t ncol() const {return n_col;}
 
+		void nrow(size_t m) {n_row = m;}
+		void ncol(size_t n) {n_col = n;}
+
 		double & operator()(size_t i, size_t j)
 		{
 			return operator[](i + j*n_row);
