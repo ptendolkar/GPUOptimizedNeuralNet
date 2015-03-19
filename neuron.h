@@ -7,6 +7,22 @@
 
 class Matrix;
 
+class Data
+{
+	public:
+		size_t n_data;
+		size_t n_feat;
+		std::vector<double> X;
+		std::vector<double> y;
+		Data() : X(), y(), n_data(0), n_feat(0) {}
+
+		/*Data (std::string input_file, std::string label_file, char delim)
+		{
+			read(input_file, delim, X, n_data, n_feat);
+			read(label_file, delim, y);
+		}*/
+};
+
 class Funct 
 {
 	private:
@@ -35,36 +51,62 @@ class Layer : public Matrix
 		Layer   *prev_lay;
 		Layer   *next_lay;
 		std::vector<Funct *> potn;
-		std::vector<double>  bias;
-		std::vector<double>  flux;
-		std::vector<double>  actv;
+		Matrix  bias;
+		Matrix  flux;
+		Matrix  actv;
 
 	public:
-		Layer() :													  Matrix(),    iden(0), prev_lay((Layer *)NULL), next_lay((Layer *)NULL), potn(),				  bias(),  actv()  {}
-		Layer(size_t i, size_t m, size_t n) :                         Matrix(m,n), iden(i), prev_lay((Layer *)NULL), next_lay((Layer *)NULL), potn(m, (Funct *)NULL), bias(n), actv(m) {}
-		Layer(size_t i, size_t m, size_t n, Layer *ipp) :             Matrix(m,n), iden(i), prev_lay(ipp),           next_lay((Layer *)NULL), potn(m, (Funct *)NULL), bias(n), actv(m) {}
-		Layer(size_t i, size_t m, size_t n, Layer *ipp, Layer *inn) : Matrix(m,n), iden(i), prev_lay(ipp),           next_lay(inn),           potn(m, (Funct *)NULL), bias(n), actv(m) {}
+		Layer() :						      Matrix(),    iden(0), prev_lay((Layer *)NULL), next_lay((Layer *)NULL), potn()               ,  bias(),  actv(), flux()  {}
+		Layer(size_t i, size_t m, size_t n) :                         Matrix(m,n), iden(i), prev_lay((Layer *)NULL), next_lay((Layer *)NULL), potn(1, (Funct *)NULL), bias(m,1), actv(m,1),flux(m,1) {}
+		Layer(size_t i, size_t m, size_t n, Layer *ipp) :             Matrix(m,n), iden(i), prev_lay(ipp),           next_lay((Layer *)NULL), potn(1, (Funct *)NULL), bias(m,1), actv(m,1),flux(m,1) {}
+		Layer(size_t i, size_t m, size_t n, Layer *ipp, Layer *inn) : Matrix(m,n), iden(i), prev_lay(ipp),           next_lay(inn),           potn(1, (Funct *)NULL), bias(m,1), actv(m,1),flux(m,1) {}
+
+		int push(Layer &);
+		int push(size_t, Data &);
 
 		size_t id()    const { return iden; }
 		Layer* prev()  const { return prev_lay; }
-		Layer* next()  const { return next_lay; }
+		Layer* next()  const { return next_lay; }	
 		Funct* f(size_t i) const { return potn[i]; }
 
 		void id(size_t i)     { iden     = i; }
 		void prev(Layer *lay) { prev_lay = lay; }
 		void next(Layer *lay) { next_lay = lay; }
+
+		Matrix* a() { return &actv; }
+		Matrix* b() { return &bias; }
+		Matrix* z() { return &flux; }
+		Matrix* w() { return (Matrix*)this;}
+
 		void f(size_t i, Funct *Phi) { potn[i] = Phi; }
 		void b(size_t i, double x)   { bias[i] = x; }
 		void z(size_t i, double x)   { flux[i] = x; }
 		void a(size_t i, double x)   { actv[i] = x; }
 		void f(std::vector<Funct *> Phi) { potn = Phi; }
-		void b(std::vector<double > x)   { bias = x; }
-		void z(std::vector<double > x)   { flux = x; }
-		void a(std::vector<double > x)   { actv = x; }
+		//void b(std::vector<double > x)   {  b = x; }
+		//void z(std::vector<double > x)   { flux = x; }
+		//void a(std::vector<double > x)   { actv = x; }
 		void f_swp(std::vector<Funct *> &Phi) { potn.std::vector<Funct *>::swap(Phi); }
 		void b_swp(std::vector<double > &x)   { bias.std::vector<double >::swap(x); }
 		void z_swp(std::vector<double > &x)   { flux.std::vector<double >::swap(x); }
 		void a_swp(std::vector<double > &x)   { actv.std::vector<double >::swap(x); }
+		void w_swp(std::vector<double > &x)   { this->std::vector<double>::swap(x); }
+		void print()
+		{
+			std::cout << "Layer id:" << iden << std::endl;
+			
+			std::cout << "Bias:" << std::endl; 
+			bias.print();
+			
+			std::cout << "Flux:" << std::endl;
+			flux.print();
+			
+			std::cout << "Actv:" << std::endl;
+			actv.print();
+			
+			std::cout << "Weights:" << std::endl;
+			(*w()).print();
+		}
 
 		void swap(Layer &lay)
 		{
@@ -84,19 +126,71 @@ class Layer : public Matrix
 		};
 };
 
-/* int Layer::push(std::vector<double> &z)
+void Layer::dgemm(const char *TrA, const char *TrB, double alpha, Matrix &A, std::vector<double> &b, double beta, Matrix &C, size_t i, size_t n_feat)
 {
-	std::vector<double> x(this->nrow());
-	// multiply x = W*z;
-	for (std::vector<int>::const_iterator i = poten.begin(); i != poten.end(); i++)
-	{
-		if (poten(*i) != (Funct *)NULL)
+	int m = A.nrow();
+	int k = A.ncol();
+	int n = B.ncol();
+
+	int LDA = A.nrow();
+	int LDB = B.nrow();
+	int LDC = C.nrow();
+
+	size_t j = i*n_feat;
+	
+	if(*TrA == 'N' && *TrB == 'N'){
+		dgemm_(TrA, TrB, &m, &n, &k, &alpha, &*A.begin(), &LDA, &*(B.begin()+j), &LDB, &beta, &*C.begin(), &LDC);	
+	}else if(*TrA == 'T' && *TrB == 'N'){
+		dgemm_(TrA, TrB, &k, &n, &m, &alpha, &*A.begin(), &LDA, &*(B.begin()+j), &LDB, &beta, &*C.begin(), &LDC);
+	}else if(*TrA == 'N' && *TrB == 'T'){
+		dgemm_(TrA, TrB, &m, &k, &k, &alpha, &*A.begin(), &LDA, &*(B.begin()+j), &LDB, &beta, &*C.begin(), &LDC);
+	}else if(*TrA == 'T' && *TrB == 'T'){
+		dgemm_(TrA, TrB, &k, &m, &k, &alpha, &*A.begin(), &LDA, &*(B.begin()+j), &LDB, &beta, &*C.begin(), &LDC);
+	}else{
+		std::cout << "dgemm(): use only \"N\" or \"T\" flags for TrA and TrB" << std::endl;
+	}
+	return;
+} 
+
+ int Layer::push(Layer &L)
+{
+	// multiply z_{i} = W_{i}*a_{i-1} + b_{i};
+	this->z_swp(this->bias);
+	dgemm("N", "N", 1.0, *(w()), (*(L.b())), 1.0, flux);
+
+	for (int i = 0; i < actv.nrow(); i++)
+	{	
+		int j = i % potn.size();
+		if (potn[j] != (Funct *)NULL)
 		{
-			x(*i) = (double *(poten(*i)->fun))(x(*i));
+			actv[i] = (*(potn[j]->get_fun()))(flux[i]);
+		}else{
+			actv[i] = flux[i];
 		}
 	}
-	activ(x);
-} */
+	return 0;
+} 
+
+int Layer::push(size_t row_id, Data &D)
+{
+	// multiply z_{i} = W_{i}*a_{i-1} + b_{i};
+	this->z_swp(this->bias);
+	dgemm("N", "N", 1.0, *(w()), D.X, 1.0, flux, row_id, D.n_feat);
+
+dgemm_("N","N", &m, &n, &k, &alpha, &*A.begin(), &LDA, &*(x.begin()+4), &LDB, &alpha, &*C.begin(), &LDC);
+
+	/*for (int i = 0; i < actv.nrow(); i++)
+	{	
+		int j = i % potn.size();
+		if (potn[j] != (Funct *)NULL)
+		{
+			actv[i] = (*(potn[j]->get_fun()))(flux[i]);
+		}else{
+			actv[i] = flux[i];
+		}
+	}*/
+	return 0;
+} 
 
 class Network
 {
