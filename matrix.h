@@ -49,10 +49,10 @@ class Matrix : public std::vector<double>
 
 extern "C"
 {
-	void dgemm_(char *TrA, char *TrB, int *m, int *n, int *k, double *alpha, double *A, int *LDA, double *B, int *LDB, double *beta, double *C, int *LDC);
+	void dgemm_(const char *TrA, const char *TrB, int *m, int *n, int *k, double *alpha, double *A, int *LDA, double *B, int *LDB, double *beta, double *C, int *LDC);
 }
 
-void dgemm(char *TrA, char *TrB, double alpha, Matrix &A, Matrix &B, double beta, Matrix &C)
+void dgemm(const char *TrA, const char *TrB, double alpha, Matrix &A, Matrix &B, double beta, Matrix &C)
 {
 	int m = A.nrow();
 	int k = A.ncol();
@@ -63,6 +63,21 @@ void dgemm(char *TrA, char *TrB, double alpha, Matrix &A, Matrix &B, double beta
 	int LDC = C.nrow();
 
 	dgemm_(TrA, TrB, &m, &n, &k, &alpha, &*A.begin(), &LDA, &*B.begin(), &LDB, &beta, &*C.begin(), &LDC);
+
+	return;
+} 
+
+void md_mult(const char *TrA, const char *TrB, double alpha, Matrix &A, std::vector<double> &B, double beta, Matrix &C, size_t obs_id, size_t n_feat)
+{
+	int m = A.nrow();
+	int k = A.ncol();
+	int n = 1;
+
+	int LDA = A.nrow();
+	int LDB = n_feat;
+	int LDC = C.nrow();
+
+	dgemm_(TrA, TrB, &m, &n, &k, &alpha, &*A.begin(), &LDA, &*(B.begin() + obs_id*n_feat), &LDB, &beta, &*C.begin(), &LDC);
 
 	return;
 } 
