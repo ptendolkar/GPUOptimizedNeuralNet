@@ -118,6 +118,26 @@ class Matrix : public std::vector<double>
 extern "C"
 {
 	void dgemm_(const char *TrA,const  char *TrB, int *m, int *n, int *k, double *alpha, double *A, int *LDA, double *B, int *LDB, double *beta, double *C, int *LDC);
+
+	void daxpy_(int *n, double *a, double *x, int *inc_x, double *y, int *inc_y);
+
+	void dger_ (int *m, int *n, double *a, double *x, int *inc_x, double *y, int *inc_y, double *A, int *LDA);
+}
+
+void dger( double a, std::vector<double> &x, int inc_x, std::vector<double> &y, int inc_y, Matrix &A){
+	int m = A.nrow();
+	int n = A.ncol();
+
+	int LDA = m;
+	dger_ (&m, &n, &a, &*x.begin(), &inc_x, &*y.begin(), &inc_y, &*A.begin(), &LDA);
+}
+
+void daxpy(double a, std::vector<double> &x, int inc_x, std::vector<double> &y, int inc_y){
+	
+	int n = x.size();
+	
+	daxpy_( &n, &a, &*x.begin(), &inc_x, &*y.begin(), &inc_y);
+
 }
 
 void dgemm(const char *TrA,const char *TrB, double alpha, Matrix &A, Matrix &B, double beta, Matrix &C)
@@ -143,3 +163,15 @@ void dgemm(const char *TrA,const char *TrB, double alpha, Matrix &A, Matrix &B, 
 	}
 	return;
 } 
+
+void md_mult(const char *TrA, const char *TrB, double alpha, Matrix &A, std::vector<double> &B, double beta, Matrix &C, size_t obs_id, size_t n_feat)
+{
+	int m = A.nrow();
+	int k = A.ncol();
+	int n = 1;
+	int LDA = A.nrow();
+	int LDB = n_feat;
+	int LDC = C.nrow();
+	dgemm_(TrA, TrB, &m, &n, &k, &alpha, &*A.begin(), &LDA, &*(B.begin() + obs_id*n_feat), &LDB, &beta, &*C.begin(), &LDC);
+	return;
+}
