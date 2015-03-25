@@ -31,47 +31,48 @@ class Layer : public Matrix
 		size_t  iden;
 		Layer   *prev_lay;
 		Layer   *next_lay;
-		std::vector<Funct *> potn;
 		Matrix  bias;
 		Matrix  flux;
 		Matrix  actv;
+		std::vector<Funct *> potn;
 
 	public:
-		Layer() :													  Matrix(),    iden(0), prev_lay((Layer *)NULL), next_lay((Layer *)NULL), potn(),				  bias(),	 flux(),	actv()	  {}
-		Layer(size_t i, size_t m, size_t n) :                         Matrix(m,n), iden(i), prev_lay((Layer *)NULL), next_lay((Layer *)NULL), potn(m, (Funct *)NULL), bias(m,1), flux(m,1), actv(m,1) {}
-		Layer(size_t i, size_t m, size_t n, Layer *ipp) :             Matrix(m,n), iden(i), prev_lay(ipp),           next_lay((Layer *)NULL), potn(m, (Funct *)NULL), bias(m,1), flux(m,1), actv(m,1) {}
-		Layer(size_t i, size_t m, size_t n, Layer *ipp, Layer *inn) : Matrix(m,n), iden(i), prev_lay(ipp),           next_lay(inn),           potn(m, (Funct *)NULL), bias(m,1), flux(m,1), actv(m,1) {}
+		Layer() : Matrix(), iden(0), prev_lay((Layer *)NULL), next_lay((Layer *)NULL), bias(), flux(), actv(), potn() {}
+		Layer(size_t i, size_t m, size_t n) : Matrix(m,n), iden(i), prev_lay((Layer *)NULL), next_lay((Layer *)NULL), bias(m,1), flux(m,1), actv(m,1), potn() {}
+		Layer(size_t i, size_t m, size_t n, Layer *ipp, Layer *inn)	: Matrix(m,n), iden(i), prev_lay(ipp), next_lay(inn), bias(m,1), flux(m,1), actv(m,1), potn() {}
+		Layer(size_t i, size_t m, size_t n, Layer *ipp, Layer *inn, Funct *f) : Matrix(m,n), iden(i), prev_lay(ipp), next_lay(inn), bias(m,1), flux(m,1), actv(m,1), potn(1,f) {}
 
-		size_t id()    const { return iden; }
-		Layer* prev()  const { return prev_lay; }
-		Layer* next()  const { return next_lay; }
+		size_t id()   const { return iden; }
+		Layer* prev() const { return prev_lay; }
+		Layer* next() const { return next_lay; }
 
-		std::vector<Funct *>* f() { return &potn; }
 		Matrix* w() { return (Matrix*) this; }
 		Matrix* b() { return &bias; }
 		Matrix* z() { return &flux; }
 		Matrix* a() { return &actv; }
+		std::vector<Funct *>* f() { return &potn; }
 
-		void id(size_t i)     { iden     = i; }
+		void id(size_t i)     { iden = i; }
 		void prev(Layer *lay) { prev_lay = lay; }
 		void next(Layer *lay) { next_lay = lay; }
 		void f(size_t i, Funct *Phi) { potn[i] = Phi; }
 
-		void f_swp(std::vector<Funct *> &Phi) { potn.std::vector<Funct *>::swap(Phi); }
 		void w_swp(std::vector<double > &x)   { this->std::vector<double>::swap(x); }
 		void b_swp(std::vector<double > &x)   { bias.std::vector<double >::swap(x); }
 		void z_swp(std::vector<double > &x)   { flux.std::vector<double >::swap(x); }
 		void a_swp(std::vector<double > &x)   { actv.std::vector<double >::swap(x); }
+		void f_swp(std::vector<Funct *> &Phi) { potn.std::vector<Funct *>::swap(Phi); }
 
 		void swap(Layer &lay)
 		{
-			Matrix::swap(lay);
+			this->Matrix::swap(lay);
 			std::swap(iden, lay.iden);
 			std::swap(prev_lay, lay.prev_lay);
 			std::swap(next_lay, lay.next_lay);
-			potn.std::vector<Funct *>::swap(lay.potn);
 			bias.std::vector<double >::swap(lay.bias);
+			flux.std::vector<double >::swap(lay.flux);
 			actv.std::vector<double >::swap(lay.actv);
+			potn.std::vector<Funct *>::swap(lay.potn);
 		};
 
 		void clearMemory()
@@ -87,43 +88,75 @@ class Layer : public Matrix
 void Layer::push(Layer &L)
 {
 	z_swp(bias);
-	dgemm("N", "N", 1.0, (*w()), (*L.a()), 1.0, flux);
+	dgemm('N', 'N', 1.0, *w(), *(L.a()), 1.0, flux);
 
-	size_t m = potn.size();
-
-	for (int i = 0; i < actv.size(); i++)
+	if (potn.size() == 1)
 	{
-		int j = i % m; 
-		if (potn[j] != (Funct *)NULL)
+		if (potn[0] == (Funct *)NULL)
 		{
-			actv[i] = (*(potn[j]->get_fun()))(flux[i]);
+			actv = flux;
 		}
 		else
 		{
-			actv[i] = flux[i];
+			for (int i = 0; i< actv.size(); i++)
+			{	
+				actv[i] = (*(potn[0]->get_fun()))(flux[i]);
+			}
 		}
 	}
+	else
+	{
+		for (int i = 0; i < actv.size(); i++)
+		{
+			if (potn[i] != (Funct *)NULL)
+			{	
+				actv[i] = (*(potn[i]->get_fun()))(flux[i]);
+			}
+			else
+			{
+				actv[i] = flux[i];
+			}
+		}
+	}
+
+	return;
 }
 
 void Layer::push(size_t obs_id, Data *dat_add)
 {
 	z_swp(bias);
-	md_mult("N", "N", 1.0, (*w()), dat_add->X, 1.0, flux, obs_id, dat_add->n_feat);
+	MASU_mult('N', 1.0, *w(), dat_add->X, obs_id, 1.0, flux);
 
-	size_t m = potn.size();
-
-	for (int i = 0; i < actv.size(); i++)
+	if (potn.size() == 1)
 	{
-		int j = i % m; 
-		if (potn[j] != (Funct *)NULL)
+		if (potn[0] == (Funct *)NULL)
 		{
-			actv[i] = (*(potn[j]->get_fun()))(flux[i]);
+			actv = flux;
 		}
 		else
 		{
-			actv[i] = flux[i];
+			for (int i = 0; i< actv.size(); i++)
+			{	
+				actv[i] = (*(potn[0]->get_fun()))(flux[i]);
+			}
 		}
 	}
+	else
+	{
+		for (int i = 0; i < actv.size(); i++)
+		{
+			if (potn[i] != (Funct *)NULL)
+			{	
+				actv[i] = (*(potn[i]->get_fun()))(flux[i]);
+			}
+			else
+			{
+				actv[i] = flux[i];
+			}
+		}
+	}
+
+	return;
 }
 
 class Network
@@ -135,7 +168,7 @@ class Network
 		Data   *data;
 
 	public:
-		Network() : 		n_lay(0), inp_lay((Layer *)NULL), out_lay((Layer *)NULL) {}
+		Network() :         n_lay(0), inp_lay((Layer *)NULL), out_lay((Layer *)NULL) {}
 		Network(size_t i) : n_lay(i), inp_lay((Layer *)NULL), out_lay((Layer *)NULL) {}
 
 		size_t depth() const { return n_lay; }
@@ -170,7 +203,7 @@ class Network
 
 // Build network dynamically backwards (head to tail) from the output layer.  Single layer network (e.g. logistic regression) will have NULL input layer pointer,
 // but all networks must have an output.  The first entry of the dimension array is the size of the covariate space, and the last entry is the size of the output space.
-void Network::build(std::vector<size_t> &dim_lay)
+void Network::build(std::vector<size_t> &dim_lay, Funct *f)
 {
 	if (dim_lay.size() < 2)
 	{
@@ -185,7 +218,7 @@ void Network::build(std::vector<size_t> &dim_lay)
 
 	for (int i=head_id; i>0; i--)
 	{
-		curn_ptr = new Layer(i-1, dim_lay[i], dim_lay[i-1], prev_ptr);
+		curn_ptr = new Layer(i-1, dim_lay[i], dim_lay[i-1], prev_ptr, (Layer *)NULL, f);
 
 		if (out_lay == (Layer *)NULL)
 		{
@@ -244,6 +277,8 @@ void Network::remove(size_t id)
 	size_t n_inp = prev_ptr->ncol();
 	size_t n_out = next_ptr->nrow();
 
+	std::vector<Funct *> curn_potn = *(next_ptr->f());
+
 	prev_ptr->clearMemory();
 	next_ptr->clearMemory();
 
@@ -297,10 +332,14 @@ int Network::insert(size_t postn, size_t n_new)
 	size_t n_inp = prev_ptr->nrow();
 	size_t n_out = nnext_ptr->ncol();
 
+	std::vector<Funct *> prev_potn = *(prev_ptr->f());
+
 	prev_ptr->clearMemory();
 
-	prev_ptr = new Layer(postn-1, n_new, n_inp, pprev_ptr);
-	next_ptr = new Layer(postn, n_out, n_new, prev_ptr, nnext_ptr);
+	prev_ptr = new Layer(postn-1, n_new, n_inp, pprev_ptr, (Layer *)NULL);
+	next_ptr = new Layer(postn,   n_out, n_new, prev_ptr,  nnext_ptr);
+
+	prev_ptr->f_swp(prev_potn);
 
 	prev_ptr->next(next_ptr);
 	nnext_ptr->prev(next_ptr);

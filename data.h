@@ -5,7 +5,7 @@
 
 /* Reads data matrix (observations along rows and features along columns) and stores in row-major format */
 
-int read(std::string data_file, char delim, std::vector<double> &X, size_t &m, size_t &n)
+void read(std::string data_file, char delim, std::vector<double> &X, size_t &m, size_t &n)
 {
 	std::fstream input(data_file.c_str());
 	std::string  line;
@@ -34,51 +34,65 @@ int read(std::string data_file, char delim, std::vector<double> &X, size_t &m, s
 	m = i;
 	n = j;
 
-	return 0;
+	return;
 };
-
-int read(std::string data_file, char delim, std::vector<double> &X)
-{
-	std::fstream input(data_file.c_str());
-	std::string  line;
-	int i = 0;
-	int j = 0;
-
-	while (std::getline(input, line))
-	{
-		double x;
-		std::stringstream ss(line);
-		std::string item;
-
-		while (std::getline(ss, item, delim))
-		{
-			if (i == 0)
-			{
-				++j;
-			}
-			x = atof(item.c_str());
-			X.push_back(x);
-		}
-
-		++i;
-	}
-
-	return 0;
-};
-
 
 class Data
 {
-	public:
-		size_t n_data;
-		size_t n_feat;
-		std::vector<double> X;
-		std::vector<double> y;
-		Data() : X(), y(), n_data(0), n_feat(0) {}
+	private:
+		size_t n_row;
+		size_t n_col;
+		size_t n_rsp;
+		size_t n_fea;
 
-		Data (std::string input_file, std::string label_file, char delim)
+		std::vector<double> X;
+
+	public:
+		Data() : X(), n_row(0), n_col(0), n_rsp(0), n_fea(0) {}
+
+		size_t nrsp() { return n_rsp; }
+		size_t nfea() { return n_fea; }
+
+		double* resp(size_t obs_id) { return &X[obs_id*n_col]; }
+		double* feat(size_t obs_id) { return &X[obs_id*n_col + n_rsp]; }
+
+		void Data (std::string data_file, char delim, size_t d)
 		{
-			read(input_file, delim, X, n_data, n_feat);
-			read(label_file, delim, y);
+			read(data_file, delim, X, n_row, n_col);
+
+			n_rsp = d;
+			n_fea = n_col - n_rsp;
+
+			return;
 		}
 };
+
+/* Data gets read and stored in row-major format - to pull and multiply a particular observation by a matrix use the following function */
+
+void MASU_mult(const char *TrA, double alpha, Matrix &A, Data &X, size_t i, double beta, Matrix &y)
+{
+	size_t M;
+	size_t N;
+
+	size_t LDA = A.nrow();
+	size_t LDB = n_feat;
+	size_t LDC = y.nrow();
+
+	switch(TrA)
+	{
+		case 'N':
+		{
+			M = A.nrow();
+			N = A.ncol(); 
+		}
+		case 'T':
+		{
+			M = A.ncol();
+			N = A.nrow();
+		}
+	}
+
+	dgemv_(TrA, &M, &N, &alpha, &*A.begin(), &LDA, &*X.feat(i), &LDB, &beta, &*y.begin(), &LDC);
+
+	return;
+} 
