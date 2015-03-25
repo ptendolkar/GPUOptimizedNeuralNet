@@ -34,7 +34,7 @@ class Layer : public Matrix
 		std::vector<Funct *> potn;
 		Matrix  bias;
 		Matrix  flux;
-		Matrix  actv
+		Matrix  actv;
 
 	public:
 		Layer() :													  Matrix(),    iden(0), prev_lay((Layer *)NULL), next_lay((Layer *)NULL), potn(),				  bias(),	 flux(),	actv()	  {}
@@ -351,12 +351,14 @@ void Network::backprop(double alpha, size_t obs_id)
 
 	for (int i=0; i<curn_lay->nrow(); i++)
 	{
-		del[i] = ((curn_layer->f())->[0])->get_grd( curn_layer->actv[0] );
-		del[i] = del[i]*(L->get_grd())->( (data->y)[obs_id] - curn_layer->actv[0] );
+		del[i] = curn_layer->f()->[i]->get_grd()->(curn_layer->z()->[i]);
+		del[i] = del[i] * L()->get_grd()->( data->y[obs_id] - curn_layer->a()->[i] );
 	}
 
-	(*(curn_lay->b())) -= alpha*del;
-	*(curn_lay->w()) + del*(*curn_lay->a())	
+//	(*(curn_lay->b())) -= alpha*del;
+	daxpy(-alpha, del, 1, *(curn_lay->b()), 1);
+	
+//	*(curn_lay->w()) + del*(*curn_lay->a())	
 	
 	daxpy(del, (*curn_lay->a()), 1, (*(curn_lay->w()), 1);
 	
