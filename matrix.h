@@ -52,6 +52,7 @@ extern "C"
 	void daxpy_(int *n, double *alpha, double *x, int inc_x, double *y, int *inc_y);
 	void dgemv_(const char *TrA, int *m, int *n, double *alpha, double *A, int *LDA, double *x, int *inc_x, double *beta, double *y, int *inc_y);
 	void dger_ (int *m, int *n, double *alpha, double *x, int *inc_x, double *y, int *inc_y, double *A, int *LDA);
+	void dbsmv_(const char *uplo, int *n, int *k, double *alpha, double *a, int *LDA, double *x, int *inc_x, double *beta, double *y, int *inc_y);
 	void dgemm_(const char *TrA, const char *TrB, int *m, int *n, int *k, double *alpha, double *A, int *LDA, double *B, int *LDB, double *beta, double *C, int *LDC);
 }
 
@@ -74,6 +75,20 @@ void dger(double alpha, std::vector<double> &x, int inc_x, std::vector<double> &
 	dger_(&M, &N, &alpha, &*x.begin(), &inc_x, &*y.begin(), &inc_y, &*A.begin(), &LDA);
 
 	return;
+}
+
+void dbsmv(std::vector<double> &a, std::vector<double> &x, std::vector<double> &y)
+{
+	size_t n = a.size();
+	size_t k = 0;
+
+	double alpha = 1.0;
+	double beta  = 1.0;
+
+	size_t inc_x = 1;
+	size_t inc_y = 1;
+
+	dbsmv_('U', &n, &k, &alpha, &*a.begin(), &LDA, &*x.begin(), &inc_x, &beta, &*y.begin(), &inc_y); 
 }
 
 void dgemm(const char *TrA, const char *TrB, double alpha, Matrix &A, Matrix &B, double beta, Matrix &C)
@@ -127,34 +142,6 @@ void dgemm(const char *TrA, const char *TrB, double alpha, Matrix &A, Matrix &B,
 	}
 
 	dgemm_(TrA, TrB, &M, &N, &K, &alpha, &*A.begin(), &LDA, &*B.begin(), &LDB, &beta, &*C.begin(), &LDC);
-
-	return;
-} 
-
-void md_mult(const char *TrA, double alpha, Matrix &A, std::vector<double> &x, double beta, Matrix &y, size_t obs_id, size_t n_feat)
-{
-	size_t M;
-	size_t N;
-
-	size_t LDA = A.nrow();
-	size_t LDB = n_feat;
-	size_t LDC = C.nrow();
-
-	switch(TrA)
-	{
-		case 'N':
-		{
-			M = A.nrow();
-			N = A.ncol(); 
-		}
-		case 'T':
-		{
-			M = A.ncol();
-			N = A.nrow();
-		}
-	}
-
-	dgemv_(TrA, &M, &N, &alpha, &*A.begin(), &LDA, &*(B.begin() + obs_id*n_feat), &LDB, &beta, &*C.begin(), &LDC);
 
 	return;
 } 

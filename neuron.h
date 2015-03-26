@@ -85,39 +85,79 @@ class Layer : public Matrix
 		void push(Layer &);
 };
 
-void Layer::push(Layer &L)
+void eval_pfun(std::vector<Funct *> *p_f, std::vector<double> &x, std::vector<double> &y)
 {
-	z_swp(bias);
-	dgemm('N', 'N', 1.0, *w(), *(L.a()), 1.0, flux);
-
-	if (potn.size() == 1)
+	if (p_f->size() == 1)
 	{
-		if (potn[0] == (Funct *)NULL)
+		if (p_f->[0] == (Funct *)NULL)
 		{
-			actv = flux;
+			y = x;
 		}
 		else
 		{
-			for (int i = 0; i< actv.size(); i++)
-			{	
-				actv[i] = (*(potn[0]->get_fun()))(flux[i]);
+			for (int i = 0; i < x.size(); i++)
+			{
+				y[i] = (*((p_f->[0])->get_fun()))(x[i]);
 			}
 		}
 	}
 	else
 	{
-		for (int i = 0; i < actv.size(); i++)
+		for (int i = 0; i < x.size(); i++)
 		{
-			if (potn[i] != (Funct *)NULL)
-			{	
-				actv[i] = (*(potn[i]->get_fun()))(flux[i]);
+			if (p_f->[i] != (Funct *)NULL)
+			{
+				y[i] = (*((p_f->[i])->get_fun()))(x[i]);
 			}
 			else
 			{
-				actv[i] = flux[i];
+				y[i] = x[i];
 			}
 		}
 	}
+
+	return;
+}
+
+void eval_pgrd(std::vector<Funct *> *p_f, std::vector<double> &x, std::vector<double> &y)
+{
+	if (p_f->size() == 1)
+	{
+		if (p_f->[0] == (Funct *)NULL)
+		{
+			y = 1;
+		}
+		else
+		{
+			for (int i = 0; i < x.size(); i++)
+			{
+				y[i] = (*((p_f->[0])->get_grd()))(x[i]);
+			}
+		}
+	}
+	else
+	{
+		for (int i = 0; i < x.size(); i++)
+		{
+			if (p_f->[i] != (Funct *)NULL)
+			{
+				y[i] = (*((p_f->[i])->get_grd()))(x[i]);
+			}
+			else
+			{
+				y[i] = 1;
+			}
+		}
+	}
+
+	return;
+}
+
+void Layer::push(Layer &L)
+{
+	z_swp(bias);
+	dgemm('N', 'N', 1.0, *w(), *(L.a()), 1.0, flux);
+	eval_potn(f(), flux, actv);
 
 	return;
 }
@@ -126,35 +166,7 @@ void Layer::push(size_t obs_id, Data *dat_add)
 {
 	z_swp(bias);
 	MASU_mult('N', 1.0, *w(), dat_add->X, obs_id, 1.0, flux);
-
-	if (potn.size() == 1)
-	{
-		if (potn[0] == (Funct *)NULL)
-		{
-			actv = flux;
-		}
-		else
-		{
-			for (int i = 0; i< actv.size(); i++)
-			{	
-				actv[i] = (*(potn[0]->get_fun()))(flux[i]);
-			}
-		}
-	}
-	else
-	{
-		for (int i = 0; i < actv.size(); i++)
-		{
-			if (potn[i] != (Funct *)NULL)
-			{	
-				actv[i] = (*(potn[i]->get_fun()))(flux[i]);
-			}
-			else
-			{
-				actv[i] = flux[i];
-			}
-		}
-	}
+	eval_potn(f(), flux, actv);
 
 	return;
 }
