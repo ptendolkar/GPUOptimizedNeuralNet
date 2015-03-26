@@ -116,12 +116,15 @@ class Matrix : public std::vector<double>
 };
 
 extern "C"
+
 {
-	void dgemm_(const char *TrA,const  char *TrB, int *m, int *n, int *k, double *alpha, double *A, int *LDA, double *B, int *LDB, double *beta, double *C, int *LDC);
+	void dgemm_(const char *TrA,const  char *TrB, size_t *m, size_t *n, size_t *k, double *alpha, double *A, size_t *LDA, double *B, size_t *LDB, double *beta, double *C, size_t *LDC);
+	
+	void dgemv_(const char *TrA, size_t *m, size_t *n, double *alpha, double *A, size_t *LDA, double *x, size_t *inc_x, double *beta, double *y, size_t *inc_y);
 
 	void daxpy_(int *n, double *a, double *x, int *inc_x, double *y, int *inc_y);
 
-	void dger_ (int *m, int *n, double *a, double *x, int *inc_x, double *y, int *inc_y, double *A, int *LDA);
+	void dger_ (size_t *m, size_t *n, double *a, double *x, int *inc_x, double *y, int *inc_y, double *A, size_t *LDA);
 	
 	void dsbmv_(const char *uplo, const int *n, const int *k,const double *alpha, const double *a, const int *lda, const double *x, const int *incx, const double *beta,double *y,const int *incy);
 }
@@ -139,12 +142,16 @@ void dsbmv(std::vector<double> &a, std::vector<double> &x, std::vector<double> &
 }
 
 // A := alpha*x*y' + A
-void dger( double a, std::vector<double> &x, int inc_x, std::vector<double> &y, int inc_y, Matrix &A){
-	int m = A.nrow();
-	int n = A.ncol();
+void dger(double alpha, std::vector<double> &x, int inc_x, std::vector<double> &y, int inc_y, Matrix &A)
+{
+	size_t M = A.nrow();
+	size_t N = A.ncol();
 
-	int LDA = m;
-	dger_ (&m, &n, &a, &*x.begin(), &inc_x, &*y.begin(), &inc_y, &*A.begin(), &LDA);
+	size_t LDA = A.nrow();
+
+	dger_(&M, &N, &alpha, &*x.begin(), &inc_x, &*y.begin(), &inc_y, &*A.begin(), &LDA);
+
+	return;
 }
 
 // y := alpha*x + y
@@ -154,40 +161,91 @@ void daxpy(double a, std::vector<double> &x, int inc_x, std::vector<double> &y, 
 	
 	daxpy_( &n, &a, &*x.begin(), &inc_x, &*y.begin(), &inc_y);
 
+	return;
 }
 
-void dgemm(const char *TrA,const char *TrB, double alpha, Matrix &A, Matrix &B, double beta, Matrix &C)
-{
-	int m = A.nrow();
-	int k = A.ncol();
-	int n = B.ncol();
 
-	int LDA = A.nrow();
-	int LDB = B.nrow();
-	int LDC = C.nrow();
-	
-	if(*TrA == 'N' && *TrB == 'N'){
-		dgemm_(TrA, TrB, &m, &n, &k, &alpha, &*A.begin(), &LDA, &*B.begin(), &LDB, &beta, &*C.begin(), &LDC);	
-	}else if(*TrA == 'T' && *TrB == 'N'){
-		dgemm_(TrA, TrB, &k, &n, &m, &alpha, &*A.begin(), &LDA, &*B.begin(), &LDB, &beta, &*C.begin(), &LDC);
-	}else if(*TrA == 'N' && *TrB == 'T'){
-		dgemm_(TrA, TrB, &m, &k, &k, &alpha, &*A.begin(), &LDA, &*B.begin(), &LDB, &beta, &*C.begin(), &LDC);
-	}else if(*TrA == 'T' && *TrB == 'T'){
-		dgemm_(TrA, TrB, &m, &n, &k, &alpha, &*A.begin(), &LDA, &*B.begin(), &LDB, &beta, &*C.begin(), &LDC);
-	}else{
-		std::cout << "dgemm(): use only \"N\" or \"T\" flags for TrA and TrB" << std::endl;
+
+void dgemm(const char *TrA, const char *TrB, double alpha, Matrix &A, Matrix &B, double beta, Matrix &C)
+{
+	size_t M;
+	size_t N;
+	size_t K;
+
+	size_t LDA = A.nrow();
+	size_t LDB = B.nrow();
+	size_t LDC = C.nrow();
+
+	switch(*TrA)
+	{
+		case 'N':
+		{
+			switch(*TrB)
+			{
+				case 'N':
+				{
+						M = A.nrow();
+						N = B.ncol();
+						K = B.nrow();
+				}
+				case 'T':
+				{
+						M = A.nrow();
+						N = B.nrow();
+						K = B.ncol();
+				}
+			}
+		}
+		case 'T':
+		{
+			switch(*TrB)
+			{
+				case 'N':
+				{
+						M = A.ncol();
+						N = B.ncol();
+						K = B.nrow();
+				}
+				case 'T':
+				{
+						M = A.ncol();
+						N = B.nrow();
+						K = B.ncol();
+				}
+			}
+		}
 	}
+
+	dgemm_(TrA, TrB, &M, &N, &K, &alpha, &*A.begin(), &LDA, &*B.begin(), &LDB, &beta, &*C.begin(), &LDC);
+
 	return;
 } 
 
-void md_mult(const char *TrA, const char *TrB, double alpha, Matrix &A, std::vector<double> &B, double beta, Matrix &C, size_t obs_id, size_t n_feat)
+// y := alpha*A*x + beta*y
+void dgemv(const char *TrA, double alpha, Matrix &A, Matrix &x, double beta, Matrix &y)
 {
-	int m = A.nrow();
-	int k = A.ncol();
-	int n = 1;
-	int LDA = A.nrow();
-	int LDB = n_feat;
-	int LDC = C.nrow();
-	dgemm_(TrA, TrB, &m, &n, &k, &alpha, &*A.begin(), &LDA, &*(B.begin() + obs_id*n_feat), &LDB, &beta, &*C.begin(), &LDC);
+	size_t M;
+	size_t N;
+	size_t LDA = A.nrow();
+	size_t LDx = x.nrow();
+	size_t LDy = y.nrow();
+
+	switch(*TrA)
+	{		
+	case 'N':
+	{
+		M = A.nrow();
+		N = A.ncol();
+	}
+	case 'T':
+	{
+		M = A.ncol();
+		N = A.nrow();
+	}
+	}
+
+	dgemv_(TrA, &M, &N, &alpha, &*A.begin(), &LDA, &*x.begin(), &LDx, &beta, &*y.begin(), &LDy);
 	return;
 }
+
+

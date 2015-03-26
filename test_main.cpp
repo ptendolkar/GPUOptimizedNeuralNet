@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include <iostream>
 #include <math.h>
-//#include "neuron.h"
-#include "matrix.h"
+#include "neuron.h"
+//#include "matrix.h"
 
 double dtanh (double x) {
 	return (1 - pow(tanh(x), 2));
@@ -57,6 +57,7 @@ int main(int argc, char* argv[])
 	
 	dsbmv(a, b, c);
     	printf("Result: [%f %f %f]\n", c[0], c[1], c[2]);
+
 
     return 0;
 }
