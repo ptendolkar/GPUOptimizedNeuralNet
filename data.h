@@ -33,8 +33,6 @@ void read(std::string data_file, char delim, std::vector<double> &X, size_t &m, 
 
 	m = i;
 	n = j;
-
-	return;
 };
 
 class Data
@@ -56,43 +54,11 @@ class Data
 		double* resp(size_t obs_id) { return &X[obs_id*n_col]; }
 		double* feat(size_t obs_id) { return &X[obs_id*n_col + n_rsp]; }
 
-		void Data (std::string data_file, char delim, size_t d)
+		Data (std::string data_file, char delim, size_t d)
 		{
 			read(data_file, delim, X, n_row, n_col);
 
 			n_rsp = d;
 			n_fea = n_col - n_rsp;
-
-			return;
 		}
 };
-
-/* Data gets read and stored in row-major format - to pull and multiply a particular observation by a matrix use the following function */
-
-void MASU_mult(const char *TrA, double alpha, Matrix &A, Data &X, size_t i, double beta, Matrix &y)
-{
-	size_t M;
-	size_t N;
-
-	size_t LDA = A.nrow();
-	size_t LDB = n_feat;
-	size_t LDC = y.nrow();
-
-	switch(TrA)
-	{
-		case 'N':
-		{
-			M = A.nrow();
-			N = A.ncol(); 
-		}
-		case 'T':
-		{
-			M = A.ncol();
-			N = A.nrow();
-		}
-	}
-
-	dgemv_(TrA, &M, &N, &alpha, &*A.begin(), &LDA, &*X.feat(i), &LDB, &beta, &*y.begin(), &LDC);
-
-	return;
-} 

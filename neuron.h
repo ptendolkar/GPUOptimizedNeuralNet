@@ -12,8 +12,7 @@ class Funct
 
 	public:
 		Funct() : fun(NULL), grd(NULL) {}
-		Funct(double (*Phi)(double)) : fun(Phi) {}
-		Funct(double (*Phi)(double), double (*Psi)(double)) : fun(Phi), grd(Psi) {}
+		Funct(double (*f)(double), double (*g)(double)) : fun(f), grd(g) {}
 
 		~Funct()
 		{
@@ -21,8 +20,8 @@ class Funct
 			grd = NULL;
 		};
 
-		double (*get_fun())(double) { return fun; }
-		double (*get_grd())(double) { return grd; }
+		double (*get_fun())(double) const { return fun; }
+		double (*get_grd())(double) const { return grd; }
 };
 
 class Layer : public Matrix
@@ -46,11 +45,17 @@ class Layer : public Matrix
 		Layer* prev() const { return prev_lay; }
 		Layer* next() const { return next_lay; }
 
-		Matrix* w() { return (Matrix*) this; }
-		Matrix* b() { return &bias; }
-		Matrix* z() { return &flux; }
-		Matrix* a() { return &actv; }
-		std::vector<Funct *>* f() { return &potn; }
+		Matrix* w() /* const */ { return (Matrix*) this; }
+		Matrix* b() /* const */ { return &bias; }
+		Matrix* z() /* const */ { return &flux; }
+		Matrix* a() /* const */ { return &actv; }
+		std::vector<Funct *>* f() /* const */ { return &potn; }
+
+		double eval_f(double x) { return (*((potn[0])->get_fun()))(x); }
+		double eval_g(double x) { return (*((potn[0])->get_grd()))(x); }
+
+		double eval_f(size_t i, double x) { return (*((potn[i])->get_fun()))(x); }
+		double eval_g(size_t i, double x) { return (*((potn[i])->get_grd()))(x); }
 
 		void id(size_t i)     { iden = i; }
 		void prev(Layer *lay) { prev_lay = lay; }
@@ -85,19 +90,19 @@ class Layer : public Matrix
 		void push(Layer &);
 };
 
-void eval_pfun(std::vector<Funct *> *p_f, std::vector<double> &x, std::vector<double> &y)
+void eval_pfun(const std::vector<Funct *> &f, const std::vector<double> &x, std::vector<double> &y)
 {
-	if (p_f->size() == 1)
+	if (f.size() == 1)
 	{
-		if (p_f->[0] == (Funct *)NULL)
+		if (f[0] == (Funct *)NULL)
 		{
-			y = x;
+			std::copy(x.begin(), x.end(), y.begin());
 		}
 		else
 		{
 			for (int i = 0; i < x.size(); i++)
 			{
-				y[i] = (*((p_f->[0])->get_fun()))(x[i]);
+				y[i] = (*(f[0]->get_fun()))(x[i]);
 			}
 		}
 	}
@@ -105,9 +110,9 @@ void eval_pfun(std::vector<Funct *> *p_f, std::vector<double> &x, std::vector<do
 	{
 		for (int i = 0; i < x.size(); i++)
 		{
-			if (p_f->[i] != (Funct *)NULL)
+			if (f[i] != (Funct *)NULL)
 			{
-				y[i] = (*((p_f->[i])->get_fun()))(x[i]);
+				y[i] = (*(f[i]->get_fun()))(x[i]);
 			}
 			else
 			{
@@ -115,23 +120,21 @@ void eval_pfun(std::vector<Funct *> *p_f, std::vector<double> &x, std::vector<do
 			}
 		}
 	}
-
-	return;
 }
 
-void eval_pgrd(std::vector<Funct *> *p_f, std::vector<double> &x, std::vector<double> &y)
+void eval_pgrd(const std::vector<Funct *> &f, const std::vector<double> &x, std::vector<double> &y)
 {
-	if (p_f->size() == 1)
+	if (f.size() == 1)
 	{
-		if (p_f->[0] == (Funct *)NULL)
+		if (f[0] == (Funct *)NULL)
 		{
-			y = 1;
+			std::fill(y.begin(), y.end(), 1.0);
 		}
 		else
 		{
 			for (int i = 0; i < x.size(); i++)
 			{
-				y[i] = (*((p_f->[0])->get_grd()))(x[i]);
+				y[i] = (*(f[0]->get_grd()))(x[i]);
 			}
 		}
 	}
@@ -139,36 +142,30 @@ void eval_pgrd(std::vector<Funct *> *p_f, std::vector<double> &x, std::vector<do
 	{
 		for (int i = 0; i < x.size(); i++)
 		{
-			if (p_f->[i] != (Funct *)NULL)
+			if (f[i] != (Funct *)NULL)
 			{
-				y[i] = (*((p_f->[i])->get_grd()))(x[i]);
+				y[i] = (*(f[i]->get_grd()))(x[i]);
 			}
 			else
 			{
-				y[i] = 1;
+				y[i] = 1.0;
 			}
 		}
 	}
-
-	return;
 }
 
 void Layer::push(Layer &L)
 {
-	z_swp(bias);
+	flux.copy(bias);
 	dgemm('N', 'N', 1.0, *w(), *(L.a()), 1.0, flux);
-	eval_potn(f(), flux, actv);
-
-	return;
+	eval_pfun(*f(), flux, actv);
 }
 
 void Layer::push(size_t obs_id, Data *dat_add)
 {
-	z_swp(bias);
-	MASU_mult('N', 1.0, *w(), dat_add->X, obs_id, 1.0, flux);
-	eval_potn(f(), flux, actv);
-
-	return;
+	flux.copy(bias);
+	dgemv('N', 1.0, *w(), (std::vector<double>)(*dat_add->feat(obs_id)), 1, 1.0, flux, 1);
+	eval_pfun(*f(), flux, actv);
 }
 
 class Network
@@ -205,10 +202,10 @@ class Network
 		Layer inp(Layer *lay) { inp_lay = lay; }
 		Layer out(Layer *lay) { out_lay = lay; }
 
-		void build(std::vector<size_t> &);
+		void build(std::vector<size_t> &, Funct *);
 		void clear();
-		int  remove(size_t);
-		int  insert(size_t, size_t);
+		void remove(size_t);
+		void insert(size_t, size_t);
 
 		void feed_foward(size_t);
 };
@@ -270,7 +267,7 @@ void Network::remove(size_t id)
 	if ((id <= 0) | (id >= n_lay))
 	{
 		std::cout << "Illegal delete: id is outside of possible range." << std::endl;
-		return 1;
+		return;
 	}
 
 	Layer *next_ptr = out_lay;
@@ -313,17 +310,15 @@ void Network::remove(size_t id)
 	{
 		out_lay = curn_ptr;
 	}
-
-	return 0;
 };
 
 // Insert layer into existing network.
-int Network::insert(size_t postn, size_t n_new)
+void Network::insert(size_t postn, size_t n_new)
 {
 	if ((postn <= 0) | (postn >= n_lay )) 
 	{
 		std::cout << "Illegal insert: position is outside of possible range." << std::endl;
-		return 1;
+		return;
 	}
 
 	Layer *next_ptr = out_lay;
@@ -364,8 +359,6 @@ int Network::insert(size_t postn, size_t n_new)
 	{
 		inp_lay = prev_ptr;
 	}
-
-	return 0;
 };
 
 void Network::feed_foward(size_t obs_id)

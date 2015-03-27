@@ -3,13 +3,14 @@
 class Matrix : public std::vector<double>
 {
 	private:
-	size_t n_row;
-	size_t n_col;
+		size_t n_row;
+		size_t n_col;
 
 	public:
 		Matrix() : n_row(0), n_col(0) {}
 		Matrix(size_t m, size_t n) : std::vector<double>(m*n), n_row(m), n_col(n) {}
 		Matrix(size_t m, size_t n, double entries) : std::vector<double>(m*n, entries), n_row(m), n_col(n) {}
+		Matrix(const Matrix &Y) : std::vector<double>(Y), n_row(Y.nrow()), n_col(Y.ncol()) {} 
 
 		void reserve(size_t m, size_t n)
 			{std::vector<double>reserve(m*n);}
@@ -33,6 +34,13 @@ class Matrix : public std::vector<double>
 			return operator[](i + j*n_row);
 		};
 
+		void copy(const Matrix &Y)
+		{
+			std::copy(Y.std::vector<double>::begin(), Y.std::vector<double>::end(), this->std::vector<double>::begin());
+			n_row = Y.nrow();
+			n_col = Y.ncol();
+		}
+
 		void swap(Matrix &Y)
 		{
 			std::vector<double>::swap(Y);
@@ -49,57 +57,75 @@ class Matrix : public std::vector<double>
 
 extern "C"
 {
-	void daxpy_(int *n, double *alpha, double *x, int inc_x, double *y, int *inc_y);
-	void dgemv_(const char *TrA, int *m, int *n, double *alpha, double *A, int *LDA, double *x, int *inc_x, double *beta, double *y, int *inc_y);
-	void dger_ (int *m, int *n, double *alpha, double *x, int *inc_x, double *y, int *inc_y, double *A, int *LDA);
-	void dbsmv_(const char *uplo, int *n, int *k, double *alpha, double *a, int *LDA, double *x, int *inc_x, double *beta, double *y, int *inc_y);
-	void dgemm_(const char *TrA, const char *TrB, int *m, int *n, int *k, double *alpha, double *A, int *LDA, double *B, int *LDB, double *beta, double *C, int *LDC);
+	// Level 1
+	void daxpy_(const int *N, const double *ALPHA, const double *X, const int *INCX, double *Y, const int *INCY);
+
+	// Level 2
+	void dgemv_(const char *TRANSA, const int *M, const int *N, const double *ALPHA, const double *A, const int *LDA, const double *X, const int *INCX, const double *BETA, double *Y, const int *INCY);
+	void dbsmv_(const char *UPLO, const int *N, const int *K, const double *ALPHA, const double *A, const int *LDA, const double *X, const int *INCX, const double *BETA, double *Y, const int *INCY);
+	void dger_ (const int *M, const int *N, const double *ALPHA, const double *X, const int *INCX, const double *Y, const int *INCY, double *A, const int *LDA);
+	void dgemm_(const char *TRANSA, const char *TRANSB, const int *M, const int *N, const int *K, const double *ALPHA, const double *A, const int *LDA, const double *B, const int *LDB, const double *BETA, const double *C, const int *LDC);
 }
 
-void daxpy(double alpha, std::vector<double> &x, int inc_x, std::vector<double> &y, int inc_y)
+void daxpy(double alpha, const std::vector<double> &x, const int inc_x, std::vector<double> &y, const int inc_y)
 {
-	size_t n = x.size();
+	const int n = x.size();
 
 	daxpy_(&n, &alpha, &*x.begin(), &inc_x, &*y.begin(), &inc_y);
-
-	return;
 }
 
-void dger(double alpha, std::vector<double> &x, int inc_x, std::vector<double> &y, int inc_y, Matrix &A)
+void dgemv(const char TrA, const double alpha, const Matrix &A, const std::vector<double> &x, const int inc_x, const double beta, std::vector<double> &y, const int inc_y)
 {
-	size_t M = A.nrow();
-	size_t N = A.ncol();
+	int M;
+	int N;
 
-	size_t LDA = A.nrow();
+	int LDA = A.nrow();
 
-	dger_(&M, &N, &alpha, &*x.begin(), &inc_x, &*y.begin(), &inc_y, &*A.begin(), &LDA);
+	switch(TrA)
+	{
+		case 'N':
+		{
+			M = A.nrow();
+			N = A.ncol();
+		}
+		case 'T':
+		{
+			M = A.ncol();
+			N = A.nrow();
+		}
+	}
 
-	return;
+	dgemv_(&TrA, &M, &N, &alpha, &*A.std::vector<double>::begin(), &LDA, &*x.begin(), &inc_x, &beta, &*y.begin(), &inc_y); 
 }
 
-void dbsmv(std::vector<double> &a, std::vector<double> &x, std::vector<double> &y)
+// k = 1 and LDA = 1 for a diagonal matrix (0 = n_super = n_lower), stored columnwise in a 1 x N vector where N is the number of columns of A
+
+void dbsmv(const char UPLO, const double alpha, const Matrix &A, const int LDA, const int K, const std::vector<double> &x, const int inc_x, const double beta, std::vector<double> &y, const int inc_y)
 {
-	size_t n = a.size();
-	size_t k = 0;
+	int N = A.ncol();
 
-	double alpha = 1.0;
-	double beta  = 1.0;
-
-	size_t inc_x = 1;
-	size_t inc_y = 1;
-
-	dbsmv_('U', &n, &k, &alpha, &*a.begin(), &LDA, &*x.begin(), &inc_x, &beta, &*y.begin(), &inc_y); 
+	dbsmv_(&UPLO, &N, &K, &alpha, &*A.std::vector<double>::begin(), &LDA, &*x.begin(), &inc_x, &beta, &*y.begin(), &inc_y); 
 }
 
-void dgemm(const char *TrA, const char *TrB, double alpha, Matrix &A, Matrix &B, double beta, Matrix &C)
+void dger(const double alpha, const std::vector<double> &x, const int inc_x, const std::vector<double> &y, const int inc_y, Matrix &A)
 {
-	size_t M;
-	size_t N;
-	size_t K;
+	int M  = A.nrow();
+	int N  = A.ncol();
 
-	size_t LDA = A.nrow();
-	size_t LDB = B.nrow();
-	size_t LDC = C.nrow();
+	int LDA = A.nrow();
+
+	dger_(&M, &N, &alpha, &*x.begin(), &inc_x, &*y.begin(), &inc_y, &*A.std::vector<double>::begin(), &LDA);
+}
+
+void dgemm(const char TrA, const char TrB, double alpha, Matrix &A, Matrix &B, double beta, Matrix &C)
+{
+	int M;
+	int N;
+	int K;
+
+	int LDA = A.nrow();
+	int LDB = B.nrow();
+	int LDC = C.nrow();
 
 	switch(TrA)
 	{
@@ -141,7 +167,5 @@ void dgemm(const char *TrA, const char *TrB, double alpha, Matrix &A, Matrix &B,
 		}
 	}
 
-	dgemm_(TrA, TrB, &M, &N, &K, &alpha, &*A.begin(), &LDA, &*B.begin(), &LDB, &beta, &*C.begin(), &LDC);
-
-	return;
+	dgemm_(&TrA, &TrB, &M, &N, &K, &alpha, &*A.std::vector<double>::begin(), &LDA, &*B.std::vector<double>::begin(), &LDB, &beta, &*C.std::vector<double>::begin(), &LDC);
 } 
