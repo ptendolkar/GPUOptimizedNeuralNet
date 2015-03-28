@@ -3,23 +3,25 @@
 #include <math.h>
 #include "neuron.h"
 
+double dtanh (double x) {
+	return (1 - pow(tanh(x), 2));
+}
+double sqloss(double x) {
+	return pow(x, 2);
+}
+double dsqloss(double x) {
+	return 2*x;
+}
+
 int main(int argc, char* argv[])
 {
-	std::vector<double> x(8);
-	x[0] = x[1] = x[2] = x[3] = 1;
-	x[4] = x[5] = x[6] = x[7] = 2;
+	Data d("training", ' ', 1);
 
-	Matrix A(4,4,0);
-	A(0,0) = A(1,1) = A(2,2) = A(3,3) = 1;
+	std::vector<size_t> dim(3);
+	dim[0] = dim[1] = 2;
+	dim[2] = 1;
 
-	Data test;
-	test.X = x;
-	test.n_feat = 4;
-
-	Layer L0(0,4,4);
-	L0.w_swp(A);
-
-//	L0.push(1, test);
+	Network net(dim, (Funct *)NULL);
 
     return 0;
 }
