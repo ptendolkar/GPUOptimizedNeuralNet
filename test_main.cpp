@@ -2,7 +2,6 @@
 #include <iostream>
 #include <math.h>
 #include "neuron.h"
-//#include "matrix.h"
 
 double dtanh (double x) {
 	return (1 - pow(tanh(x), 2));
@@ -17,7 +16,12 @@ double dsqloss(double x) {
 int main(int argc, char* argv[])
 {
 	Data d("training", ' ', 1);
-	
-	
-    	return 0;
+
+	std::vector<size_t> dim(3);
+	dim[0] = dim[1] = 2;
+	dim[2] = 1;
+
+	Network net(dim, (Funct *)NULL);
+
+    return 0;
 }

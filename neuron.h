@@ -181,11 +181,41 @@ class Network
 		Network() :         n_lay(0), inp_lay((Layer *)NULL), out_lay((Layer *)NULL) {}
 		Network(size_t i) : n_lay(i), inp_lay((Layer *)NULL), out_lay((Layer *)NULL) {}
 
+		Network(std::vector<size_t> &dim_lay, Funct *f)
+{
+	if (dim_lay.size() < 2)
+	{
+		std::cout << "Insufficient parameters to create a network." << std::endl;
+		return;
+	}
+
+	Layer *prev_ptr = (Layer *)NULL;
+	Layer *curn_ptr = (Layer *)NULL;
+
+	int head_id = dim_lay.size()-1;
+
+	for (int i=head_id; i>0; i--)
+	{
+		curn_ptr = new Layer(i-1, dim_lay[i], dim_lay[i-1], prev_ptr, (Layer *)NULL, f);
+
+		if (out_lay == (Layer *)NULL)
+		{
+			out_lay = curn_ptr;
+		}
+		else
+		{
+			(curn_ptr->prev())->next(curn_ptr);
+			inp_lay = curn_ptr;
+		}
+
+		prev_ptr = curn_ptr;
+	}
+};
+
 		size_t depth() const { return n_lay; }
 		Layer *inp()   const { return inp_lay; }
 		Layer *out()   const { return out_lay; }
-		
-		Funct *L() { return loss; }
+		Funct *L()     const { return loss; }
 
 		Network(const Network &net)
 		{
@@ -216,7 +246,7 @@ class Network
 
 // Build network dynamically backwards (head to tail) from the output layer.  Single layer network (e.g. logistic regression) will have NULL input layer pointer,
 // but all networks must have an output.  The first entry of the dimension array is the size of the covariate space, and the last entry is the size of the output space.
-void Network::build(std::vector<size_t> &dim_lay, Funct *f)
+/* Network(std::vector<size_t> &dim_lay, Funct *f)
 {
 	if (dim_lay.size() < 2)
 	{
@@ -245,7 +275,7 @@ void Network::build(std::vector<size_t> &dim_lay, Funct *f)
 
 		prev_ptr = curn_ptr;
 	}
-};
+}; */
 
 // Clear dynamically built network backwards.
 void Network::clear()
@@ -416,8 +446,9 @@ void Network::backprop(double alpha, size_t obs_id)
 
 		//BP 2
 		dgemv('T', 1.0, *(curn_lay->next()->w()), *p_odel, 1, 0.0, ndel, 1); 
-		eval_pgrd(*(curn_lay->f()), *(curn_lay->z()), dPhi);
-		dsbmv('U',1.0, dPhi,0, ndel, 1, 0.0, ndel, 1);
+		eval_pgrd(*curn_lay->f(), *(curn_lay->z()), dPhi);
+		// dbsmv(dPhi, ndel, ndel);
+		dsbmv('U', 1.0, dPhi, 0, ndel, 1, 0.0, ndel, 1);
 		
 		//BP 3
 		daxpy(-alpha, ndel, 1, *(curn_lay->b()), 1);
