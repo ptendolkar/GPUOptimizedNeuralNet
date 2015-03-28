@@ -175,6 +175,7 @@ class Network
 		Layer  *inp_lay;
 		Layer  *out_lay;
 		Data   *data;
+		Funct  *loss;
 
 	public:
 		Network() :         n_lay(0), inp_lay((Layer *)NULL), out_lay((Layer *)NULL) {}
@@ -183,6 +184,8 @@ class Network
 		size_t depth() const { return n_lay; }
 		Layer *inp()   const { return inp_lay; }
 		Layer *out()   const { return out_lay; }
+		
+		Funct *L() { return loss; }
 
 		Network(const Network &net)
 		{
@@ -208,6 +211,7 @@ class Network
 		void insert(size_t, size_t);
 
 		void feed_foward(size_t);
+		void backprop(double, size_t);
 };
 
 // Build network dynamically backwards (head to tail) from the output layer.  Single layer network (e.g. logistic regression) will have NULL input layer pointer,
@@ -411,9 +415,9 @@ void Network::backprop(double alpha, size_t obs_id)
 		Matrix dPhi(curn_lay->nrow(),1);
 
 		//BP 2
-		dgemv("T", 1.0, *(curn_lay->next()->w()), *p_odel, 0.0, ndel); 
-		eval_pgrd(curn_lay->f(), *(curn_lay->z()), dPhi);
-		dsbmv(dPhi, ndel, ndel);
+		dgemv('T', 1.0, *(curn_lay->next()->w()), *p_odel, 1, 0.0, ndel, 1); 
+		eval_pgrd(*(curn_lay->f()), *(curn_lay->z()), dPhi);
+		dsbmv('U',1.0, dPhi,0, ndel, 1, 0.0, ndel, 1);
 		
 		//BP 3
 		daxpy(-alpha, ndel, 1, *(curn_lay->b()), 1);
