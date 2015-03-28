@@ -33,8 +33,6 @@ void read(std::string data_file, char delim, std::vector<double> &X, size_t &m, 
 
 	m = i;
 	n = j;
-
-	return;
 };
 
 class Data
