@@ -174,43 +174,51 @@ class Network
 		size_t n_lay;
 		Layer  *inp_lay;
 		Layer  *out_lay;
-		Data   *data;
 		Funct  *loss;
+		Data   *data;
 
 	public:
-		Network() :         n_lay(0), inp_lay((Layer *)NULL), out_lay((Layer *)NULL) {}
-		Network(size_t i) : n_lay(i), inp_lay((Layer *)NULL), out_lay((Layer *)NULL) {}
+		Network() : n_lay(0), inp_lay((Layer *)NULL), out_lay((Layer *)NULL), data((Data *)NULL), loss((Funct *)NULL) {}
 
-		Network(std::vector<size_t> &dim_lay, Funct *f)
-{
-	if (dim_lay.size() < 2)
-	{
-		std::cout << "Insufficient parameters to create a network." << std::endl;
-		return;
-	}
+// Build network dynamically backwards (head to tail) from the output layer.  Single layer network (e.g. logistic regression) will have NULL input layer pointer,
+// but all networks must have an output.  The first entry of the dimension array is the size of the covariate space, and the last entry is the size of the output space.
 
-	Layer *prev_ptr = (Layer *)NULL;
-	Layer *curn_ptr = (Layer *)NULL;
-
-	int head_id = dim_lay.size()-1;
-
-	for (int i=head_id; i>0; i--)
-	{
-		curn_ptr = new Layer(i-1, dim_lay[i], dim_lay[i-1], prev_ptr, (Layer *)NULL, f);
-
-		if (out_lay == (Layer *)NULL)
+		Network(std::vector<size_t> &dim_lay, Funct *f, Funct *l, Data *train)
 		{
-			out_lay = curn_ptr;
-		}
-		else
-		{
-			(curn_ptr->prev())->next(curn_ptr);
-			inp_lay = curn_ptr;
-		}
+			loss = l;
+			data = train; 
 
-		prev_ptr = curn_ptr;
-	}
-};
+			inp_lay = (Layer *)NULL;
+			out_lay = (Layer *)NULL;
+
+			if (dim_lay.size() < 2)
+			{
+				std::cout << "Insufficient parameters to create a network." << std::endl;
+				return;
+			}
+
+			Layer *prev_ptr = (Layer *)NULL;
+			Layer *curn_ptr = (Layer *)NULL;
+
+			n_lay = dim_lay.size() - 1;
+
+			for (int i=n_lay; i>0; i--)
+			{
+				curn_ptr = new Layer(i-1, dim_lay[i], dim_lay[i-1], prev_ptr, (Layer *)NULL, f);
+
+				if (out_lay == (Layer *)NULL)
+				{
+					out_lay = curn_ptr;
+				}
+				else
+				{
+					curn_ptr->prev()->next(curn_ptr);
+					inp_lay = curn_ptr;
+				}
+
+				prev_ptr = curn_ptr;
+			}
+		};
 
 		size_t depth() const { return n_lay; }
 		Layer *inp()   const { return inp_lay; }
@@ -243,39 +251,6 @@ class Network
 		void feed_foward(size_t);
 		void backprop(double, size_t);
 };
-
-// Build network dynamically backwards (head to tail) from the output layer.  Single layer network (e.g. logistic regression) will have NULL input layer pointer,
-// but all networks must have an output.  The first entry of the dimension array is the size of the covariate space, and the last entry is the size of the output space.
-/* Network(std::vector<size_t> &dim_lay, Funct *f)
-{
-	if (dim_lay.size() < 2)
-	{
-		std::cout << "Insufficient parameters to create a network." << std::endl;
-		return;
-	}
-
-	Layer *prev_ptr = (Layer *)NULL;
-	Layer *curn_ptr = (Layer *)NULL;
-
-	int head_id = dim_lay.size()-1;
-
-	for (int i=head_id; i>0; i--)
-	{
-		curn_ptr = new Layer(i-1, dim_lay[i], dim_lay[i-1], prev_ptr, (Layer *)NULL, f);
-
-		if (out_lay == (Layer *)NULL)
-		{
-			out_lay = curn_ptr;
-		}
-		else
-		{
-			(curn_ptr->prev())->next(curn_ptr);
-			inp_lay = curn_ptr;
-		}
-
-		prev_ptr = curn_ptr;
-	}
-}; */
 
 // Clear dynamically built network backwards.
 void Network::clear()
