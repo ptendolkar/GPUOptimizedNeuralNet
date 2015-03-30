@@ -6,7 +6,7 @@
 double dtanh (double x) {
 	return (1 - pow(tanh(x), 2));
 }
-double sqloss(double x) {
+double  sqloss(double x) {
 	return pow(x, 2);
 }
 double dsqloss(double x) {
@@ -16,12 +16,13 @@ double dsqloss(double x) {
 int main(int argc, char* argv[])
 {
 	Data d("training", ' ', 1);
+	Data *train = &d;
 
 	std::vector<size_t> dim(3);
 	dim[0] = dim[1] = 2;
 	dim[2] = 1;
 
-	Network net(dim, (Funct *)NULL);
+	Network net(dim, (Funct *)NULL, (Funct *)NULL, train);
 
     return 0;
 }
