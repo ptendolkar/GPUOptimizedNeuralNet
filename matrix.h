@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <iomanip>
 #include <iostream>
+#include <fstream>
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_rng.h>
 
@@ -54,6 +55,22 @@ class Matrix : public std::vector<double>
 			std::vector<double>::swap(Y);
 			std::swap(n_row, Y.n_row);
 			std::swap(n_col, Y.n_col);
+		};
+		
+		void writeToFile(std::string filename){
+			std::ofstream myfile(filename.c_str(), std::ios::trunc);
+			for(int i = 0; i < n_row; i++){
+				for(int j = 0; j < n_col; j++){
+					
+					myfile << (*this)(i,j); 
+					if(j < n_col-1)
+						myfile << " ";
+					else
+						myfile << "\n";
+				}
+			}		
+			myfile.close();
+
 		};
 	
 		void print(){

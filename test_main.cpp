@@ -23,6 +23,12 @@ int main(int argc, char* argv[])
 	dim[2] = 1;
 
 	Network net(dim, (Funct *)NULL, (Funct *)NULL, train);
+	
+	Matrix C(5,5);
+	C.identity();
+	C(0,1) = -1;
+
+	C.writeToFile("testmatrix");
 
     return 0;
 }
