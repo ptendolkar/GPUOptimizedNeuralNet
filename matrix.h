@@ -57,12 +57,12 @@ class Matrix : public std::vector<double>
 			std::swap(n_col, Y.n_col);
 		};
 		
-		void writeToFile(std::string filename){
+		void writeToFile(std::string filename, int prec=5){
 			std::ofstream myfile(filename.c_str(), std::ios::trunc);
 			for(int i = 0; i < n_row; i++){
 				for(int j = 0; j < n_col; j++){
 					
-					myfile << (*this)(i,j); 
+					myfile << std::setprecision(prec) << (*this)(i,j); 
 					if(j < n_col-1)
 						myfile << " ";
 					else

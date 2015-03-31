@@ -25,8 +25,7 @@ int main(int argc, char* argv[])
 	Network net(dim, (Funct *)NULL, (Funct *)NULL, train);
 	
 	Matrix C(5,5);
-	C.identity();
-	C(0,1) = -1;
+	C.initialize();
 
 	C.writeToFile("testmatrix");
 
