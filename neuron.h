@@ -4,6 +4,19 @@
 class Matrix;
 class Data;
 
+namespace nncuda
+{
+	double lact(double val)
+	{
+		return val;
+	}
+
+	double lgrd(double val)
+	{
+		return 1.0;
+	}
+}
+
 class Funct 
 {
 	private:
@@ -11,8 +24,8 @@ class Funct
 		double (*grd)(double);
 
 	public:
-		Funct() : fun(NULL), grd(NULL) {}
-		Funct(double (*f)(double), double (*g)(double)) : fun(f), grd(g) {}
+		Funct() 					: fun( &(nncuda::lact) ), grd( &(nncuda::lgrd) ) {}
+		Funct(double (*f)(double), double (*g)(double)) : fun(f)		, grd(g){}
 
 		~Funct()
 		{
@@ -164,7 +177,8 @@ void Layer::push(Layer &L)
 void Layer::push(size_t obs_id, Data *dat_add)
 {
 	flux.copy(bias);
-	dgemv('N', 1.0, *w(), (std::vector<double>)(*dat_add->feat(obs_id)), 1, 1.0, flux, 1);
+	double* L = dat_add->feat(obs_id);
+	dgemv('N', 1.0, *w(), *L, 1, 1.0, flux, 1);
 	eval_pfun(*f(), flux, actv);
 }
 
@@ -248,8 +262,13 @@ class Network
 		void remove(size_t);
 		void insert(size_t, size_t);
 
-		void feed_foward(size_t);
+		void feed_forward(size_t);
 		void backprop(double, size_t);
+
+		void train(double,std::vector<size_t>&, size_t);
+
+		void writeModelToFile(size_t);
+
 };
 
 // Clear dynamically built network backwards.
@@ -370,7 +389,7 @@ void Network::insert(size_t postn, size_t n_new)
 	}
 };
 
-void Network::feed_foward(size_t obs_id)
+void Network::feed_forward(size_t obs_id)
 {
 	Layer *curn_lay;
 
@@ -401,10 +420,12 @@ void Network::backprop(double alpha, size_t obs_id)
 	//BP 1
 	for (int i=0; i<curn_lay->nrow(); i++)
 	{
-		del[i] =(*(*(curn_lay->f()))[i]->get_grd())((*(curn_lay->z()))[i]); //del = sigma'(z)
+		Funct* clf = (*(curn_lay->f()))[i];
+		double cz = (*(curn_lay->z()))[i];
+		del[i] = (*(clf->get_grd()))(cz); //del = sigma'(z)
 		del[i] *= (*( L()->get_grd())) (*(data->resp(obs_id) + i) - (*(curn_lay->a()))[i]); // del = del*grad_a(C)
 	}
-//		//BP 3
+	//BP 3
 	daxpy(-alpha, del, 1, *(curn_lay->b()), 1);
 	
 	//BP 4
@@ -420,7 +441,7 @@ void Network::backprop(double alpha, size_t obs_id)
 		Matrix dPhi(curn_lay->nrow(),1);
 
 		//BP 2
-		dgemv('T', 1.0, *(curn_lay->next()->w()), *p_odel, 1, 0.0, ndel, 1); 
+		dgemv('T', 1.0, *(curn_lay->next()->w()), *((double *)&p_odel[0]) , 1, 0.0, ndel, 1); 
 		eval_pgrd(*curn_lay->f(), *(curn_lay->z()), dPhi);
 		// dbsmv(dPhi, ndel, ndel);
 		dsbmv('U', 1.0, dPhi, 0, ndel, 1, 0.0, ndel, 1);
@@ -436,5 +457,35 @@ void Network::backprop(double alpha, size_t obs_id)
 		
 		curn_lay = curn_lay->prev();
 
+	}
+}
+
+void Network::train(double alpha,std::vector<size_t> &obs_id, size_t iterations )
+{	
+	for( size_t i = 0 ; i < iterations ; i++ ){
+		for( size_t j=0 ; j < obs_id.size(); j++ ){
+			feed_forward( obs_id[j] );
+			backprop( alpha, obs_id[j] );
+		}
+	}	
+}
+
+void Network::writeModelToFile(size_t prec=5)
+{
+	Layer *curn_lay = out_lay;
+	while(curn_lay != (Layer *)NULL)
+	{
+		size_t idl = curn_lay->id();
+		std::cout << "writing layer " << idl << std::endl;
+		std::stringstream sstm;	
+		sstm <<	"layer-" << idl << "-weights";
+		curn_lay->Matrix::writeToFile(sstm.str(), prec);	
+		
+		sstm.str("");
+		sstm.clear();
+		sstm << "layer-" << idl << "-biases";
+		(*(curn_lay->b())).writeToFile(sstm.str(), prec);
+		
+		curn_lay = curn_lay->prev();
 	}
 }

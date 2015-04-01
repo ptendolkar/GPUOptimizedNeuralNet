@@ -98,8 +98,7 @@ class Matrix : public std::vector<double>
 			
 			r = gsl_rng_alloc(gsl_rng_mt19937);
 
-			for( int i = 0; i < n_row*n_col; i++ ){
-				
+			for( int i = 0; i < n_row*n_col; i++ ){	
 		
 				(*this)[i] = gsl_ran_gaussian(r, sigma);
 				(*this)[i] = mean + (*this)[i];
@@ -159,7 +158,7 @@ void daxpy(double alpha, const std::vector<double> &x, const int inc_x, std::vec
 	daxpy_(&n, &alpha, &*x.begin(), &inc_x, &*y.begin(), &inc_y);
 }
 
-void dgemv(const char TrA, const double alpha, const Matrix &A, const std::vector<double> &x, const int inc_x, const double beta, std::vector<double> &y, const int inc_y)
+void dgemv(const char TrA, const double alpha, const Matrix &A, const double &x, const int inc_x, const double beta, std::vector<double> &y, const int inc_y)
 {
 	int M;
 	int N;
@@ -172,15 +171,17 @@ void dgemv(const char TrA, const double alpha, const Matrix &A, const std::vecto
 		{
 			M = A.nrow();
 			N = A.ncol();
+			break;
 		}
 		case 'T':
 		{
 			M = A.ncol();
 			N = A.nrow();
+			break;
 		}
 	}
 
-	dgemv_(&TrA, &M, &N, &alpha, &*A.std::vector<double>::begin(), &LDA, &*x.begin(), &inc_x, &beta, &*y.begin(), &inc_y); 
+	dgemv_(&TrA, &M, &N, &alpha, &*A.begin(), &LDA, &x, &inc_x, &beta, &*y.begin(), &inc_y); 
 }
 
 // k = 1 and LDA = 1 for a diagonal matrix (0 = n_super = n_lower), stored columnwise in a 1 x N vector where N is the number of columns of A
