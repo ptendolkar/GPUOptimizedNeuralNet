@@ -75,6 +75,7 @@ class Layer : public Matrix
 		void next(Layer *lay) { next_lay = lay; }
 		void f(size_t i, Funct *Phi) { potn[i] = Phi; }
 
+
 		void w_swp(std::vector<double > &x)   { this->std::vector<double>::swap(x); }
 		void b_swp(std::vector<double > &x)   { bias.std::vector<double >::swap(x); }
 		void z_swp(std::vector<double > &x)   { flux.std::vector<double >::swap(x); }
@@ -222,16 +223,22 @@ class Network
 
 				if (out_lay == (Layer *)NULL)
 				{
+					curn_ptr = new Layer(i-1, dim_lay[i], dim_lay[i-1], prev_ptr, (Layer *)NULL, f);
 					out_lay = curn_ptr;
 				}
 				else
 				{
-					curn_ptr->prev()->next(curn_ptr);
-					inp_lay = curn_ptr;
+			//		curn_ptr->prev()->next(curn_ptr);
+			//		inp_lay = curn_ptr;
+					curn_ptr = new Layer(i-1, dim_lay[i], dim_lay[i-1], (Layer *)NULL, prev_ptr, f);
+					prev_ptr->prev(curn_ptr);
 				}
 
 				prev_ptr = curn_ptr;
 			}
+
+			inp_lay=new Layer(0, dim_lay[0], 1, (Layer*) NULL, prev_ptr, f);
+			inp_lay->next(prev_ptr);
 		};
 
 		size_t depth() const { return n_lay; }

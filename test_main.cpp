@@ -49,7 +49,8 @@ int main(int argc, char* argv[])
 	obs[1] = 1;
 	obs[2] = 2;
 	obs[3] = 3;
-
+	
+	net.writeModelToFile();
 	net.train(.001, obs, 1000);
 	net.writeModelToFile();
 
