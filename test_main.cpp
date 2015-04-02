@@ -50,6 +50,7 @@ int main(int argc, char* argv[])
 	obs[2] = 2;
 	obs[3] = 3;
 	
+	net.initialize();
 	net.writeModelToFile();
 	net.train(.001, obs, 1000);
 	net.writeModelToFile();

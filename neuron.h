@@ -104,6 +104,7 @@ class Layer : public Matrix
 		void push(Layer &);
 };
 
+//evaluate f on x and store in y using fun
 void eval_pfun(const std::vector<Funct *> &f, const std::vector<double> &x, std::vector<double> &y)
 {
 	if (f.size() == 1)
@@ -219,18 +220,16 @@ class Network
 
 			for (int i=n_lay; i>0; i--)
 			{
-				curn_ptr = new Layer(i-1, dim_lay[i], dim_lay[i-1], prev_ptr, (Layer *)NULL, f);
+				curn_ptr = new Layer(i, dim_lay[i], dim_lay[i-1], prev_ptr, (Layer *)NULL, f);
 
 				if (out_lay == (Layer *)NULL)
 				{
-					curn_ptr = new Layer(i-1, dim_lay[i], dim_lay[i-1], prev_ptr, (Layer *)NULL, f);
+					curn_ptr = new Layer(i, dim_lay[i], dim_lay[i-1], prev_ptr, (Layer *)NULL, f);
 					out_lay = curn_ptr;
 				}
 				else
 				{
-			//		curn_ptr->prev()->next(curn_ptr);
-			//		inp_lay = curn_ptr;
-					curn_ptr = new Layer(i-1, dim_lay[i], dim_lay[i-1], (Layer *)NULL, prev_ptr, f);
+					curn_ptr = new Layer(i, dim_lay[i], dim_lay[i-1], (Layer *)NULL, prev_ptr, f);
 					prev_ptr->prev(curn_ptr);
 				}
 
@@ -238,7 +237,7 @@ class Network
 			}
 
 			inp_lay=new Layer(0, dim_lay[0], 1, (Layer*) NULL, prev_ptr, f);
-			inp_lay->next(prev_ptr);
+			prev_ptr->prev(inp_lay);
 		};
 
 		size_t depth() const { return n_lay; }
@@ -276,6 +275,7 @@ class Network
 
 		void writeModelToFile(size_t);
 
+		void initialize(double , double);
 };
 
 // Clear dynamically built network backwards.
@@ -493,6 +493,15 @@ void Network::writeModelToFile(size_t prec=5)
 		sstm << "layer-" << idl << "-biases";
 		(*(curn_lay->b())).writeToFile(sstm.str(), prec);
 		
+		curn_lay = curn_lay->prev();
+	}
+}
+
+void Network::initialize(double mean = 0, double sigma = 1){
+	Layer *curn_lay = out_lay;
+	while(curn_lay != (Layer *)NULL)
+	{
+		curn_lay->w()->initialize(mean, sigma);
 		curn_lay = curn_lay->prev();
 	}
 }
