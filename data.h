@@ -50,6 +50,7 @@ class Data
 
 		size_t nrsp() { return n_rsp; }
 		size_t nfea() { return n_fea; }
+		size_t nrow() { return n_row; }
 
 		double* resp(size_t obs_id) { return &X[obs_id*n_col]; }
 		double* feat(size_t obs_id) { return &X[obs_id*n_col + n_rsp]; }

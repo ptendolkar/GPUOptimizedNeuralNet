@@ -180,7 +180,7 @@ void Layer::push(size_t obs_id, Data *dat_add)
 {
 	flux.copy(bias);
 	double* L = dat_add->feat(obs_id);
-	dgemv('N', 1.0, *w(), *L, 1, 1.0, flux, 1);
+	dgemv('N', 1.0, *w(), *L, dat_add->nrow(), 1.0, flux, 1);
 	eval_pfun(*f(), flux, actv);
 }
 
@@ -480,7 +480,7 @@ void Network::train(double alpha,std::vector<size_t> &obs_id, size_t iterations 
 void Network::writeModelToFile(size_t prec=5)
 {
 	Layer *curn_lay = out_lay;
-	while(curn_lay != (Layer *)NULL)
+	while(curn_lay->prev()!= (Layer *)NULL)
 	{
 		size_t idl = curn_lay->id();
 		std::cout << "writing layer " << idl << std::endl;

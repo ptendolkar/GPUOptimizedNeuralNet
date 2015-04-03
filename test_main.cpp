@@ -27,8 +27,8 @@ int main(int argc, char* argv[])
 	Matrix flux(2,1);
 	
 	std::cout << sizeof(double) << std::endl;	
-	double* L = &x[0] + 2;
-	dgemv('N', 1.0, A, *L, 1, 0.0, *((std::vector<double>*)&flux), 1);
+	double* L = &x[0]+1 ;
+	dgemv('N', 1.0, A, *L, x.nrow(), 0.0, *((std::vector<double>*)&flux), 1);
 
 	flux.print();
 	
@@ -51,8 +51,7 @@ int main(int argc, char* argv[])
 	obs[3] = 3;
 	
 	net.initialize();
-	net.writeModelToFile();
-	net.train(.001, obs, 1000);
+	net.train(.001, obs, 10);
 	net.writeModelToFile();
 
     return 0;

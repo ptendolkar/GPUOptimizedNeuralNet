@@ -175,8 +175,8 @@ void dgemv(const char TrA, const double alpha, const Matrix &A, const double &x,
 		}
 		case 'T':
 		{
-			M = A.ncol();
-			N = A.nrow();
+			N = A.ncol();
+			M = A.nrow();
 			break;
 		}
 	}
@@ -227,14 +227,17 @@ void dgemm(const char TrA, const char TrB, double alpha, Matrix &A, Matrix &B, d
 						M = A.nrow();
 						N = B.ncol();
 						K = B.nrow();
+						break;	
 				}
 				case 'T':
 				{
 						M = A.nrow();
 						N = B.nrow();
 						K = B.ncol();
+						break;
 				}
 			}
+			break;
 		}
 		case 'T':
 		{
@@ -245,14 +248,17 @@ void dgemm(const char TrA, const char TrB, double alpha, Matrix &A, Matrix &B, d
 						M = A.ncol();
 						N = B.ncol();
 						K = B.nrow();
+						break;
 				}
 				case 'T':
 				{
 						M = A.ncol();
 						N = B.nrow();
 						K = B.ncol();
+						break;
 				}
 			}
+			break;
 		}
 	}
 
