@@ -151,6 +151,7 @@ extern "C"
 	void dgemm_(const char *TRANSA, const char *TRANSB, const int *M, const int *N, const int *K, const double *ALPHA, const double *A, const int *LDA, const double *B, const int *LDB, const double *BETA, const double *C, const int *LDC);
 }
 
+//y  <--  alpha*x + y
 void daxpy(double alpha, const std::vector<double> &x, const int inc_x, std::vector<double> &y, const int inc_y)
 {
 	const int n = x.size();
@@ -194,14 +195,15 @@ void dsbmv(const char UPLO, const double alpha, const Matrix &A, const int K, co
 	dsbmv_(&UPLO, &N, &K, &alpha, &*A.std::vector<double>::begin(), &LDA, &*x.begin(), &inc_x, &beta, &*y.begin(), &inc_y); 
 }
 
-void dger(const double alpha, const std::vector<double> &x, const int inc_x, const std::vector<double> &y, const int inc_y, Matrix &A)
+//A := alpha*x*y**T + A 
+void dger(const double alpha, double &x, const int inc_x, const std::vector<double> &y, const int inc_y, Matrix &A)
 {
 	int M  = A.nrow();
 	int N  = A.ncol();
 
 	int LDA = A.nrow();
 
-	dger_(&M, &N, &alpha, &*x.begin(), &inc_x, &*y.begin(), &inc_y, &*A.std::vector<double>::begin(), &LDA);
+	dger_(&M, &N, &alpha, &x, &inc_x, &*y.begin(), &inc_y, &*A.std::vector<double>::begin(), &LDA);
 }
 
 

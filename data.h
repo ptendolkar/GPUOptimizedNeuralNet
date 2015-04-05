@@ -62,4 +62,13 @@ class Data
 			n_rsp = d;
 			n_fea = n_col - n_rsp;
 		}
+
+		//for predicting
+		Data(std::vector<double> &dat, size_t d = 0)
+		{
+			n_rsp = d;
+			n_col = dat.size();
+			X = dat;
+			n_row = 1;
+		}
 };

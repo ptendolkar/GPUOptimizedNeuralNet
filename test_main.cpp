@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
 	
 	std::cout << sizeof(double) << std::endl;	
 	double* L = &x[0]+1 ;
-	dgemv('N', 1.0, A, *L, x.nrow(), 0.0, *((std::vector<double>*)&flux), 1);
+	dgemv('T', 1.0, A, *L, x.nrow(), 0.0, *((std::vector<double>*)&flux), 1);
 
 	flux.print();
 	
@@ -44,15 +44,21 @@ int main(int argc, char* argv[])
 
 	Network net(dim, &g, &l, &d);
 	
-	std::vector<size_t> obs(4);
-	obs[0] = 0;
-	obs[1] = 1;
-	obs[2] = 2;
-	obs[3] = 3;
+	std::vector<size_t> obs(1);
+	obs[0] = 2;
+//	obs[1] = 1;
+//	obs[2] = 2;
+//	obs[3] = 3;
 	
 	net.initialize();
-	net.train(.001, obs, 10);
+	net.train(.00001, obs, 100000);
 	net.writeModelToFile();
+
+	std::vector<double> tr1(2);
+	tr1[0] = 0.01;
+	tr1[1] = 0.99;
+
+	(net.predict(tr1)).print();
 
     return 0;
 }

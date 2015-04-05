@@ -276,6 +276,8 @@ class Network
 		void writeModelToFile(size_t);
 
 		void initialize(double , double);
+
+		Matrix predict(std::vector<double> &);
 };
 
 // Clear dynamically built network backwards.
@@ -430,19 +432,19 @@ void Network::backprop(double alpha, size_t obs_id)
 		Funct* clf = (*(curn_lay->f()))[i];
 		double cz = (*(curn_lay->z()))[i];
 		del[i] = (*(clf->get_grd()))(cz); //del = sigma'(z)
-		del[i] *= (*( L()->get_grd())) (*(data->resp(obs_id) + i) - (*(curn_lay->a()))[i]); // del = del*grad_a(C)
+		del[i] *= (*( L()->get_grd())) (*(data->resp(obs_id) + data->nrow()*i) - (*(curn_lay->a()))[i]); // del = del*grad_a(C)
 	}
 	//BP 3
 	daxpy(-alpha, del, 1, *(curn_lay->b()), 1);
 	
 	//BP 4
-	dger(-alpha, del, 1, *(curn_lay->a()), 1, *(curn_lay->w())); 
+	dger(-alpha, *((double *)(curn_lay->prev()->a())), 1,del, 1, *(curn_lay->w())); 
 	
 	curn_lay = curn_lay->prev();
 
 	Matrix *p_odel = &del;
 	
-	while(curn_lay != (Layer *)NULL)
+	while( curn_lay->prev() != (Layer *)NULL)
 	{
 		Matrix ndel(curn_lay->nrow(),1);
 		Matrix dPhi(curn_lay->nrow(),1);
@@ -457,8 +459,12 @@ void Network::backprop(double alpha, size_t obs_id)
 		daxpy(-alpha, ndel, 1, *(curn_lay->b()), 1);
 	
 		//BP 4
-		dger(-alpha, ndel, 1, *(curn_lay->a()), 1, *(curn_lay->w())); 		
 		
+		if(curn_lay->prev() != inp_lay)
+			dger(-alpha, *((double *)(curn_lay->prev()->a())), 1, ndel, 1, *(curn_lay->w())); 
+		else
+			dger(-alpha,*(data->resp(obs_id)), data->nrow(), ndel, 1, *(curn_lay->w())); 
+	
 		p_odel->clearMemory();
 		p_odel = &ndel;
 		
@@ -475,7 +481,7 @@ void Network::train(double alpha,std::vector<size_t> &obs_id, size_t iterations 
 			backprop( alpha, obs_id[j] );
 		}
 	}	
-}
+};
 
 void Network::writeModelToFile(size_t prec=5)
 {
@@ -495,7 +501,7 @@ void Network::writeModelToFile(size_t prec=5)
 		
 		curn_lay = curn_lay->prev();
 	}
-}
+};
 
 void Network::initialize(double mean = 0, double sigma = 1){
 	Layer *curn_lay = out_lay;
@@ -504,4 +510,20 @@ void Network::initialize(double mean = 0, double sigma = 1){
 		curn_lay->w()->initialize(mean, sigma);
 		curn_lay = curn_lay->prev();
 	}
-}
+};
+
+Matrix Network::predict(std::vector<double> &inp)
+{
+	Data* dat = data;
+	Data tmp_dat(inp);
+	
+	data = &tmp_dat;
+	feed_forward(0);
+	data = dat;
+
+	Matrix out(out_lay->nrow(),1);
+
+	out.swap(*(out_lay->a()));
+
+	return out;
+};
