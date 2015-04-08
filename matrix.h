@@ -79,7 +79,7 @@ class Matrix : public std::vector<double>
 				std::cout << "not initialized" << std::endl;
 				return;
 			}
-			std::cout << "Rows: " << this->n_row << ", Cols: " << this->n_col << std::endl;
+		//	std::cout << "Rows: " << this->n_row << ", Cols: " << this->n_col << std::endl;
 			for(int i = 0; i < n_row; i++){
 				for(int j = 0; j < n_col; j++){
 						
@@ -158,7 +158,32 @@ void daxpy(double alpha, const std::vector<double> &x, const int inc_x, std::vec
 
 	daxpy_(&n, &alpha, &*x.begin(), &inc_x, &*y.begin(), &inc_y);
 }
+void dgemv(const char TrA, const double alpha, const Matrix &A, const std::vector<double> &x, const int inc_x, const double beta, std::vector<double> &y, const int inc_y)
+{
 
+	int M;
+	int N;
+	
+	int LDA = A.nrow();
+/*
+	switch(TrA)
+	{
+		case 'N':
+		{*/
+			M = A.nrow();
+			N = A.ncol();
+/*			break;
+		}
+		case 'T':
+		{
+			M = A.ncol();
+			N = A.nrow();
+			break;
+		}
+	}*/
+
+	dgemv_(&TrA, &M, &N, &alpha, &*A.std::vector<double>::begin(), &LDA, &*x.begin(), &inc_x, &beta, &*y.begin(), &inc_y); 
+}
 void dgemv(const char TrA, const double alpha, const Matrix &A, const double &x, const int inc_x, const double beta, std::vector<double> &y, const int inc_y)
 {
 	int M;
@@ -206,7 +231,16 @@ void dger(const double alpha, double &x, const int inc_x, const std::vector<doub
 	dger_(&M, &N, &alpha, &x, &inc_x, &*y.begin(), &inc_y, &*A.std::vector<double>::begin(), &LDA);
 }
 
+//A := alpha*x*y**T + A 
+void dger(const double alpha, const std::vector<double> &x, const int inc_x, const std::vector<double> &y, const int inc_y, Matrix &A)
+{
+	int M  = A.nrow();
+	int N  = A.ncol();
 
+	int LDA = A.nrow();
+
+	dger_(&M, &N, &alpha, &*x.begin(), &inc_x, &*y.begin(), &inc_y, &*A.std::vector<double>::begin(), &LDA);
+}
 void dgemm(const char TrA, const char TrB, double alpha, Matrix &A, Matrix &B, double beta, Matrix &C)
 
 {

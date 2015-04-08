@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
 {
 /*	Matrix A(2,2);
 	A.identity();
-	A(0,1)=3;
+	//A(0,1)=3;
 	Matrix x(2,2);
 	x(0,0) =-1;
 	x(0,1) =-1;
@@ -26,13 +26,27 @@ int main(int argc, char* argv[])
 	x(1,1) = 2;
 	Matrix flux(2,1);
 	
-	std::cout << sizeof(double) << std::endl;	
 	double* L = &x[0]+1 ;
 	dgemv('T', 1.0, A, *L, x.nrow(), 0.0, *((std::vector<double>*)&flux), 1);
 
 	flux.print();
+*/	
+/*
+	Matrix v1(3,1);
+	Matrix v2(3,1);
+	Matrix p(3,3);
+
+	v1[0] = 1;
+	v1[1] = 2;
+	v1[2] = 3;
+
+	v2[0] = v2[2] = 2;
+	v2[1] = -1;
 	
-*/
+	dger(1, *((double *) &v1[0]), 1, v2, 1, p); 
+	p.print();
+	*/
+
 	Data d("training", ' ', 1);
 
 	std::vector<size_t> dim(3);
@@ -51,7 +65,9 @@ int main(int argc, char* argv[])
 //	obs[3] = 3;
 	
 	net.initialize();
-	net.train(.00001, obs, 100000);
+	net.print();
+	net.train(.01, obs, 100000);
+	net.print();
 	net.writeModelToFile();
 
 	std::vector<double> tr1(2);

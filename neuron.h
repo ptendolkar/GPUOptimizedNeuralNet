@@ -180,7 +180,7 @@ void Layer::push(size_t obs_id, Data *dat_add)
 {
 	flux.copy(bias);
 	double* L = dat_add->feat(obs_id);
-	dgemv('N', 1.0, *w(), *L, dat_add->nrow(), 1.0, flux, 1);
+	dgemv('N', 1.0, *w(), *L, 1/*dat_add->nrow()*/, 1.0, flux, 1);
 	eval_pfun(*f(), flux, actv);
 }
 
@@ -274,6 +274,7 @@ class Network
 		void train(double,std::vector<size_t>&, size_t);
 
 		void writeModelToFile(size_t);
+		void print();
 
 		void initialize(double , double);
 
@@ -404,7 +405,7 @@ void Network::feed_forward(size_t obs_id)
 
 	if (inp_lay != (Layer *)NULL)
 	{
-		curn_lay = inp_lay;
+		curn_lay = inp_lay->next();
 	}
 	else
 	{
@@ -413,7 +414,6 @@ void Network::feed_forward(size_t obs_id)
 
 	curn_lay->push(obs_id, data);
 	curn_lay = curn_lay->next();
-
 
 	while (curn_lay != (Layer *)NULL)
 	{
@@ -438,7 +438,7 @@ void Network::backprop(double alpha, size_t obs_id)
 	daxpy(-alpha, del, 1, *(curn_lay->b()), 1);
 	
 	//BP 4
-	dger(-alpha, *((double *)(curn_lay->prev()->a())), 1,del, 1, *(curn_lay->w())); 
+	dger(-alpha, *(curn_lay->prev()->a()), 1,del, 1, *(curn_lay->w())); 
 	
 	curn_lay = curn_lay->prev();
 
@@ -450,7 +450,8 @@ void Network::backprop(double alpha, size_t obs_id)
 		Matrix dPhi(curn_lay->nrow(),1);
 
 		//BP 2
-		dgemv('T', 1.0, *(curn_lay->next()->w()), *((double *)&p_odel[0]) , 1, 0.0, ndel, 1); 
+//		dgemv('T', 1.0, *(curn_lay->next()->w()), *((double *)&p_odel[0]) , 1, 0.0, ndel, 1); 
+		dgemv('T', 1.0, *(curn_lay->next()->w()), *p_odel, 1, 0.0, ndel, 1); 
 		eval_pgrd(*curn_lay->f(), *(curn_lay->z()), dPhi);
 		// dbsmv(dPhi, ndel, ndel);
 		dsbmv('U', 1.0, dPhi, 0, ndel, 1, 0.0, ndel, 1);
@@ -461,9 +462,9 @@ void Network::backprop(double alpha, size_t obs_id)
 		//BP 4
 		
 		if(curn_lay->prev() != inp_lay)
-			dger(-alpha, *((double *)(curn_lay->prev()->a())), 1, ndel, 1, *(curn_lay->w())); 
+			dger(-alpha, *(curn_lay->prev()->a()), 1, ndel, 1, *(curn_lay->w())); 
 		else
-			dger(-alpha,*(data->resp(obs_id)), data->nrow(), ndel, 1, *(curn_lay->w())); 
+			dger(-alpha,*(data->resp(obs_id)), 1, ndel, 1, *(curn_lay->w())); 
 	
 		p_odel->clearMemory();
 		p_odel = &ndel;
@@ -489,7 +490,7 @@ void Network::writeModelToFile(size_t prec=5)
 	while(curn_lay->prev()!= (Layer *)NULL)
 	{
 		size_t idl = curn_lay->id();
-		std::cout << "writing layer " << idl << std::endl;
+//		std::cout << "writing layer " << idl << std::endl;
 		std::stringstream sstm;	
 		sstm <<	"layer-" << idl << "-weights";
 		curn_lay->Matrix::writeToFile(sstm.str(), prec);	
@@ -501,6 +502,18 @@ void Network::writeModelToFile(size_t prec=5)
 		
 		curn_lay = curn_lay->prev();
 	}
+};
+
+void Network::print()
+{
+	Layer *curn_lay = out_lay;
+	while(curn_lay->prev()!= (Layer *)NULL)
+	{
+		std::cout << "====== Layer " << curn_lay->id() << " ======" << std::endl;
+		curn_lay->print();
+		curn_lay = curn_lay->prev();
+	}
+	std::cout << "======\n\n";
 };
 
 void Network::initialize(double mean = 0, double sigma = 1){
