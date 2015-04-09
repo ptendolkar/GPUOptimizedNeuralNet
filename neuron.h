@@ -438,7 +438,7 @@ void Network::backprop(double alpha, size_t obs_id)
 	daxpy(-alpha, del, 1, *(curn_lay->b()), 1);
 	
 	//BP 4
-	dger(-alpha, *(curn_lay->prev()->a()), 1,del, 1, *(curn_lay->w())); 
+	dger(-alpha, del, 1,*(curn_lay->prev()->a()), 1, *(curn_lay->w())); 
 	
 	curn_lay = curn_lay->prev();
 
@@ -454,17 +454,20 @@ void Network::backprop(double alpha, size_t obs_id)
 		dgemv('T', 1.0, *(curn_lay->next()->w()), *p_odel, 1, 0.0, ndel, 1); 
 		eval_pgrd(*curn_lay->f(), *(curn_lay->z()), dPhi);
 		// dbsmv(dPhi, ndel, ndel);
-		dsbmv('U', 1.0, dPhi, 0, ndel, 1, 0.0, ndel, 1);
-		
+		Matrix tmp(ndel.nrow(),1);
+
+		dsbmv("L", 1.0, dPhi, 0, ndel, 1, 0.0, tmp, 1);
+		ndel.swap(tmp);
+
 		//BP 3
 		daxpy(-alpha, ndel, 1, *(curn_lay->b()), 1);
 	
 		//BP 4
 		
 		if(curn_lay->prev() != inp_lay)
-			dger(-alpha, *(curn_lay->prev()->a()), 1, ndel, 1, *(curn_lay->w())); 
+			dger(-alpha, ndel, 1, *(curn_lay->prev()->a()), 1,*(curn_lay->w())); 
 		else
-			dger(-alpha,*(data->resp(obs_id)), 1, ndel, 1, *(curn_lay->w())); 
+			dger(-alpha,  *(data->feat(obs_id)), 1, ndel, 1, *(curn_lay->w())); 
 	
 		p_odel->clearMemory();
 		p_odel = &ndel;

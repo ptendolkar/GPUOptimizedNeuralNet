@@ -212,12 +212,12 @@ void dgemv(const char TrA, const double alpha, const Matrix &A, const double &x,
 
 // k = 1 and LDA = 1 for a diagonal matrix (0 = n_super = n_lower), stored columnwise in a 1 x N vector where N is the number of columns of A
 
-void dsbmv(const char UPLO, const double alpha, const Matrix &A, const int K, const std::vector<double> &x, const int inc_x, const double beta, std::vector<double> &y, const int inc_y)
+void dsbmv(const char *UPLO, const double alpha, const Matrix &A, const int K, const std::vector<double> &x, const int inc_x, const double beta, std::vector<double> &y, const int inc_y)
 {
-	int N = A.ncol();
-	int LDA = A.nrow();
+	int N = A.nrow();
+	int LDA = 1;
 
-	dsbmv_(&UPLO, &N, &K, &alpha, &*A.std::vector<double>::begin(), &LDA, &*x.begin(), &inc_x, &beta, &*y.begin(), &inc_y); 
+	dsbmv_(UPLO, &N, &K, &alpha, &*A.std::vector<double>::begin(), &LDA, &*x.begin(), &inc_x, &beta, &*y.begin(), &inc_y); 
 }
 
 //A := alpha*x*y**T + A 
@@ -228,7 +228,7 @@ void dger(const double alpha, double &x, const int inc_x, const std::vector<doub
 
 	int LDA = A.nrow();
 
-	dger_(&M, &N, &alpha, &x, &inc_x, &*y.begin(), &inc_y, &*A.std::vector<double>::begin(), &LDA);
+	dger_(&M, &N, &alpha, &*y.begin(), &inc_x, &x, &inc_y, &*A.std::vector<double>::begin(), &LDA);
 }
 
 //A := alpha*x*y**T + A 
