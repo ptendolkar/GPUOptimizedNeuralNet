@@ -67,7 +67,7 @@ extern "C"
 	void dgemm_(const char *TRANSA, const char *TRANSB, const int *M, const int *N, const int *K, const double *ALPHA, const double *A, const int *LDA, const double *B, const int *LDB, const double *BETA, const double *C, const int *LDC);
 }
 
-void daxpy(double alpha, const std::vector<double> &x, const int inc_x, std::vector<double> &y, const int inc_y)
+void daxpy(const double alpha, const std::vector<double> &x, const int inc_x, std::vector<double> &y, const int inc_y)
 {
 	const int n = x.size();
 
@@ -76,24 +76,10 @@ void daxpy(double alpha, const std::vector<double> &x, const int inc_x, std::vec
 
 void dgemv(const char TrA, const double alpha, const Matrix &A, const std::vector<double> &x, const int inc_x, const double beta, std::vector<double> &y, const int inc_y)
 {
-	int M;
-	int N;
+	int M = A.nrow();
+	int N = A.ncol();
 
 	int LDA = A.nrow();
-
-	switch(TrA)
-	{
-		case 'N':
-		{
-			M = A.nrow();
-			N = A.ncol();
-		}
-		case 'T':
-		{
-			M = A.ncol();
-			N = A.nrow();
-		}
-	}
 
 	dgemv_(&TrA, &M, &N, &alpha, &*A.std::vector<double>::begin(), &LDA, &*x.begin(), &inc_x, &beta, &*y.begin(), &inc_y); 
 }
@@ -102,9 +88,9 @@ void dgemv(const char TrA, const double alpha, const Matrix &A, const std::vecto
 
 void dsbmv(const char UPLO, const double alpha, const Matrix &A, const int K, const std::vector<double> &x, const int inc_x, const double beta, std::vector<double> &y, const int inc_y)
 {
-	int N = A.ncol();
+	int N = A.nrow();
 
-	int LDA = A.nrow();
+	int LDA = 1;
 
 	dsbmv_(&UPLO, &N, &K, &alpha, &*A.std::vector<double>::begin(), &LDA, &*x.begin(), &inc_x, &beta, &*y.begin(), &inc_y); 
 }
@@ -140,14 +126,17 @@ void dgemm(const char TrA, const char TrB, double alpha, Matrix &A, Matrix &B, d
 						M = A.nrow();
 						N = B.ncol();
 						K = B.nrow();
+						break;
 				}
 				case 'T':
 				{
 						M = A.nrow();
 						N = B.nrow();
 						K = B.ncol();
+						break;
 				}
 			}
+			break;
 		}
 		case 'T':
 		{
@@ -158,14 +147,17 @@ void dgemm(const char TrA, const char TrB, double alpha, Matrix &A, Matrix &B, d
 						M = A.ncol();
 						N = B.ncol();
 						K = B.nrow();
+						break;
 				}
 				case 'T':
 				{
 						M = A.ncol();
 						N = B.nrow();
 						K = B.ncol();
+						break;
 				}
 			}
+			break;
 		}
 	}
 

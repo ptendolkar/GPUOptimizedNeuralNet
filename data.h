@@ -50,15 +50,25 @@ class Data
 
 		size_t nrsp() { return n_rsp; }
 		size_t nfea() { return n_fea; }
+		size_t nrow() { return n_row; }
 
 		double* resp(size_t obs_id) { return &X[obs_id*n_col]; }
 		double* feat(size_t obs_id) { return &X[obs_id*n_col + n_rsp]; }
 
-		Data (std::string data_file, char delim, size_t d)
+		Data(std::string data_file, char delim, size_t d)
 		{
 			read(data_file, delim, X, n_row, n_col);
 
 			n_rsp = d;
 			n_fea = n_col - n_rsp;
+		}
+
+		//for predicting
+		Data(std::vector<double> &dat, size_t d = 0)
+		{
+			n_rsp = d;
+			n_col = dat.size();
+			X = dat;
+			n_row = 1;
 		}
 };

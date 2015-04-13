@@ -18,11 +18,13 @@ int main(int argc, char* argv[])
 	Data d("training", ' ', 1);
 	Data *train = &d;
 
-	std::vector<size_t> dim(3);
-	dim[0] = dim[1] = 2;
-	dim[2] = 1;
+	std::vector<size_t> dim(2);
+	dim[0] = 2;
+	dim[1] = 1;
 
-	Network net(dim, (Funct *)NULL, (Funct *)NULL, train);
+	Funct L(&sqloss, &dsqloss);
+
+	Network net(dim, (Funct *)NULL, &L, train);
 
     return 0;
 }

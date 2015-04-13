@@ -27,39 +27,41 @@ class Funct
 class Layer : public Matrix
 {
 	private:
-		size_t  iden;
-		Layer   *prev_lay;
-		Layer   *next_lay;
-		Matrix  bias;
-		Matrix  flux;
-		Matrix  actv;
+		size_t iden;
+		Layer  *prev_lay_ptr;
+		Layer  *next_lay_ptr;
+		Matrix bias;
+		Matrix flux;
+		Matrix actv;
 		std::vector<Funct *> potn;
 
 	public:
-		Layer() : Matrix(), iden(0), prev_lay((Layer *)NULL), next_lay((Layer *)NULL), bias(), flux(), actv(), potn() {}
-		Layer(size_t i, size_t m, size_t n) : Matrix(m,n), iden(i), prev_lay((Layer *)NULL), next_lay((Layer *)NULL), bias(m,1), flux(m,1), actv(m,1), potn() {}
-		Layer(size_t i, size_t m, size_t n, Layer *ipp, Layer *inn)	: Matrix(m,n), iden(i), prev_lay(ipp), next_lay(inn), bias(m,1), flux(m,1), actv(m,1), potn() {}
-		Layer(size_t i, size_t m, size_t n, Layer *ipp, Layer *inn, Funct *f) : Matrix(m,n), iden(i), prev_lay(ipp), next_lay(inn), bias(m,1), flux(m,1), actv(m,1), potn(1,f) {}
+		Layer() : Matrix(), iden(0), prev_lay_ptr((Layer *)NULL), next_lay_ptr((Layer *)NULL), bias(), flux(), actv(), potn() {}
+		Layer(size_t i, size_t m, size_t n) : Matrix(m,n), iden(i), prev_lay_ptr((Layer *)NULL), next_lay_ptr((Layer *)NULL), bias(m,1), flux(m,1), actv(m,1), potn() {}
+		Layer(size_t i, size_t m, size_t n, Layer *ipp, Layer *inn)	: Matrix(m,n), iden(i), prev_lay_ptr(ipp), next_lay_ptr(inn), bias(m,1), flux(m,1), actv(m,1), potn() {}
+		Layer(size_t i, size_t m, size_t n, Layer *ipp, Layer *inn, Funct *f) : Matrix(m,n), iden(i), prev_lay_ptr(ipp), next_lay_ptr(inn), bias(m,1), flux(m,1), actv(m,1), potn(1,f) {}
 
 		size_t id()   const { return iden; }
-		Layer* prev() const { return prev_lay; }
-		Layer* next() const { return next_lay; }
+		Layer* prev() const { return prev_lay_ptr; }
+		Layer* next() const { return next_lay_ptr; }
 
 		Matrix* w() /* const */ { return (Matrix*) this; }
 		Matrix* b() /* const */ { return &bias; }
 		Matrix* z() /* const */ { return &flux; }
 		Matrix* a() /* const */ { return &actv; }
-		std::vector<Funct *>* f() /* const */ { return &potn; }
 
 		double eval_f(double x) { return (*((potn[0])->get_fun()))(x); }
 		double eval_g(double x) { return (*((potn[0])->get_grd()))(x); }
 
 		double eval_f(size_t i, double x) { return (*((potn[i])->get_fun()))(x); }
 		double eval_g(size_t i, double x) { return (*((potn[i])->get_grd()))(x); }
+		
+		void eval_pfun(const std::vector<double> &x, std::vector<double> &y);
+		void eval_pgrd(const std::vector<double> &x, std::vector<double> &y);
 
 		void id(size_t i)     { iden = i; }
-		void prev(Layer *lay) { prev_lay = lay; }
-		void next(Layer *lay) { next_lay = lay; }
+		void prev(Layer *lay) { prev_lay_ptr = lay; }
+		void next(Layer *lay) { next_lay_ptr = lay; }
 		void f(size_t i, Funct *Phi) { potn[i] = Phi; }
 
 		void w_swp(std::vector<double > &x)   { this->std::vector<double>::swap(x); }
@@ -72,8 +74,8 @@ class Layer : public Matrix
 		{
 			this->Matrix::swap(lay);
 			std::swap(iden, lay.iden);
-			std::swap(prev_lay, lay.prev_lay);
-			std::swap(next_lay, lay.next_lay);
+			std::swap(prev_lay_ptr, lay.prev_lay_ptr);
+			std::swap(next_lay_ptr, lay.next_lay_ptr);
 			bias.std::vector<double >::swap(lay.bias);
 			flux.std::vector<double >::swap(lay.flux);
 			actv.std::vector<double >::swap(lay.actv);
@@ -87,32 +89,31 @@ class Layer : public Matrix
 		};
 
 		void push(size_t, Data *);
-		void push(Layer &);
 };
 
-void eval_pfun(const std::vector<Funct *> &f, const std::vector<double> &x, std::vector<double> &y)
+void Layer::eval_pfun(const std::vector<double> &x, std::vector<double> &y)
 {
-	if (f.size() == 1)
+	if (potn.size() == 1)
 	{
-		if (f[0] == (Funct *)NULL)
-		{
-			std::copy(x.begin(), x.end(), y.begin());
-		}
-		else
+		if (potn[0] != (Funct *)NULL)
 		{
 			for (int i = 0; i < x.size(); i++)
 			{
-				y[i] = (*(f[0]->get_fun()))(x[i]);
+				y[i] = eval_f(x[i]);
 			}
+		}
+		else
+		{
+			std::copy(x.begin(), x.end(), y.begin());	
 		}
 	}
 	else
 	{
 		for (int i = 0; i < x.size(); i++)
 		{
-			if (f[i] != (Funct *)NULL)
+			if (potn[i] != (Funct *)NULL)
 			{
-				y[i] = (*(f[i]->get_fun()))(x[i]);
+				y[i] = eval_f(i, x[i]);
 			}
 			else
 			{
@@ -122,74 +123,74 @@ void eval_pfun(const std::vector<Funct *> &f, const std::vector<double> &x, std:
 	}
 }
 
-void eval_pgrd(const std::vector<Funct *> &f, const std::vector<double> &x, std::vector<double> &y)
+void Layer::eval_pgrd(const std::vector<double> &x, std::vector<double> &y)
 {
-	if (f.size() == 1)
+	if (potn.size() == 1)
 	{
-		if (f[0] == (Funct *)NULL)
-		{
-			std::fill(y.begin(), y.end(), 1.0);
-		}
-		else
+		if (potn[0] != (Funct *)NULL)
 		{
 			for (int i = 0; i < x.size(); i++)
 			{
-				y[i] = (*(f[0]->get_grd()))(x[i]);
+				y[i] = eval_g(x[i]);
 			}
+		}
+		else
+		{
+			std::fill(y.begin(), y.end(), 1.0);	
 		}
 	}
 	else
 	{
 		for (int i = 0; i < x.size(); i++)
 		{
-			if (f[i] != (Funct *)NULL)
+			if (potn[i] != (Funct *)NULL)
 			{
-				y[i] = (*(f[i]->get_grd()))(x[i]);
+				y[i] = eval_g(i, x[i]);
 			}
 			else
 			{
-				y[i] = 1.0;
+				y[i] = 1;
 			}
 		}
 	}
 }
 
-void Layer::push(Layer &L)
+void Layer::push(size_t obs_id, Data *data_ptr)
 {
 	flux.copy(bias);
-	dgemm('N', 'N', 1.0, *w(), *(L.a()), 1.0, flux);
-	eval_pfun(*f(), flux, actv);
-}
-
-void Layer::push(size_t obs_id, Data *dat_add)
-{
-	flux.copy(bias);
-	dgemv('N', 1.0, *w(), (std::vector<double>)(*dat_add->feat(obs_id)), 1, 1.0, flux, 1);
-	eval_pfun(*f(), flux, actv);
+	if (prev() != (Layer *)NULL)
+	{
+		dgemv('N', 1.0, *w(), *(prev()->a()), 1, 1.0, flux, 1);
+	}
+	else
+	{
+		dgemv('N', 1.0, *w(), (std::vector<double>)(*data_ptr->feat(obs_id)), 1, 1.0, flux, 1);
+	}
+	eval_pfun(flux, actv);
 }
 
 class Network
 {
 	private:
 		size_t n_lay;
-		Layer  *inp_lay;
-		Layer  *out_lay;
+		Layer  *head_lay_ptr;
+		Layer  *tail_lay_ptr;
 		Funct  *loss;
-		Data   *data;
+		Data   *data_ptr;
 
 	public:
-		Network() : n_lay(0), inp_lay((Layer *)NULL), out_lay((Layer *)NULL), data((Data *)NULL), loss((Funct *)NULL) {}
+		Network() : n_lay(0), head_lay_ptr((Layer *)NULL), tail_lay_ptr((Layer *)NULL), data_ptr((Data *)NULL), loss((Funct *)NULL) {}
 
-// Build network dynamically backwards (head to tail) from the output layer.  Single layer network (e.g. logistic regression) will have NULL input layer pointer,
+// Build network dynamically fowards (head to tail) from the output layer.  Single layer network (e.g. logistic regression) will have NULL input layer pointer,
 // but all networks must have an output.  The first entry of the dimension array is the size of the covariate space, and the last entry is the size of the output space.
 
 		Network(std::vector<size_t> &dim_lay, Funct *f, Funct *l, Data *train)
 		{
 			loss = l;
-			data = train; 
+			data_ptr = train; 
 
-			inp_lay = (Layer *)NULL;
-			out_lay = (Layer *)NULL;
+			head_lay_ptr = (Layer *)NULL;
+			tail_lay_ptr = (Layer *)NULL;
 
 			if (dim_lay.size() < 2)
 			{
@@ -197,244 +198,135 @@ class Network
 				return;
 			}
 
-			Layer *prev_ptr = (Layer *)NULL;
-			Layer *curn_ptr = (Layer *)NULL;
-
 			n_lay = dim_lay.size() - 1;
 
-			for (int i=n_lay; i>0; i--)
+			Layer *curn_lay_ptr = new Layer(0, dim_lay[1], dim_lay[0], (Layer *)NULL, (Layer *)NULL, f);
+			Layer *prev_lay_ptr = curn_lay_ptr;
+
+			head_lay_ptr = curn_lay_ptr;
+
+			for (int i=0; i<n_lay; i++)
 			{
-				curn_ptr = new Layer(i-1, dim_lay[i], dim_lay[i-1], prev_ptr, (Layer *)NULL, f);
-
-				if (out_lay == (Layer *)NULL)
-				{
-					out_lay = curn_ptr;
-				}
-				else
-				{
-					curn_ptr->prev()->next(curn_ptr);
-					inp_lay = curn_ptr;
-				}
-
-				prev_ptr = curn_ptr;
+				curn_lay_ptr = new Layer(i, dim_lay[i+1], dim_lay[i], prev_lay_ptr, (Layer *)NULL, f);
+				curn_lay_ptr->prev()->next(curn_lay_ptr);
+				prev_lay_ptr = curn_lay_ptr;
 			}
+
+			tail_lay_ptr = curn_lay_ptr;
 		};
 
 		size_t depth() const { return n_lay; }
-		Layer *inp()   const { return inp_lay; }
-		Layer *out()   const { return out_lay; }
-		Funct *L()     const { return loss; }
-
-		Network(const Network &net)
-		{
-			n_lay = net.depth();
-			inp_lay = net.inp();
-			out_lay = net.out();
-		}
+		Layer  *head() const { return head_lay_ptr; }
+		Layer  *tail() const { return tail_lay_ptr; }
+		Funct  *lfun() const { return loss; }
+		Data   *data() const { return data_ptr; }
 
 		~Network()
 		{
-			n_lay   = 0;
-			inp_lay = (Layer *)NULL;
-			out_lay = (Layer *)NULL;
+			n_lay        = 0;
+			head_lay_ptr = (Layer *)NULL;
+			tail_lay_ptr = (Layer *)NULL;
+			loss         = (Funct *)NULL;
+			data_ptr     = (Data  *)NULL;
 		};
 
 		Layer depth(size_t i) { n_lay = i; }
-		Layer inp(Layer *lay) { inp_lay = lay; }
-		Layer out(Layer *lay) { out_lay = lay; }
 
 		void build(std::vector<size_t> &, Funct *);
 		void clear();
-		void remove(size_t);
-		void insert(size_t, size_t);
 
 		void feed_foward(size_t);
 		void backprop(double, size_t);
 };
 
-// Clear dynamically built network backwards.
+// Clear dynamically built network fowards.
 void Network::clear()
 {
-	Layer *curn_ptr = out_lay;
-	Layer *prev_ptr = curn_ptr->prev();
-	curn_ptr->Layer::clearMemory();
+	Layer *curn_lay_ptr = head_lay_ptr;
+	Layer *next_lay_ptr = curn_lay_ptr->next();
+	curn_lay_ptr->clearMemory();
 
-	while (prev_ptr != (Layer *)NULL)
+	while (next_lay_ptr != (Layer *)NULL)
 	{
-		curn_ptr = prev_ptr;
-		prev_ptr = curn_ptr->prev();
-		curn_ptr->Layer::clearMemory();
+		curn_lay_ptr = next_lay_ptr;
+		next_lay_ptr = curn_lay_ptr->next();
+		curn_lay_ptr->clearMemory();
 	}
 
-	inp_lay = prev_ptr;
+	head_lay_ptr = tail_lay_ptr = (Layer *)NULL;
 	n_lay   = 0;
 };
 
-// Delete layer from existing network, by iterating backwards.
-void Network::remove(size_t id)
-{
-	if ((id <= 0) | (id >= n_lay))
-	{
-		std::cout << "Illegal delete: id is outside of possible range." << std::endl;
-		return;
-	}
-
-	Layer *next_ptr = out_lay;
-	Layer *prev_ptr = next_ptr->prev();
-
-	while (next_ptr->id() != id)
-	{
-		next_ptr->id(next_ptr->id() - 1);
-		next_ptr = prev_ptr;
-		prev_ptr = next_ptr->prev();
-	}
-
-	Layer *pprev_ptr = prev_ptr->prev();
-	Layer *nnext_ptr = next_ptr->next();
-
-	size_t n_inp = prev_ptr->ncol();
-	size_t n_out = next_ptr->nrow();
-
-	std::vector<Funct *> curn_potn = *(next_ptr->f());
-
-	prev_ptr->clearMemory();
-	next_ptr->clearMemory();
-
-	Layer *curn_ptr = new Layer(id-1, n_out, n_inp, pprev_ptr, nnext_ptr);
-
-	if (pprev_ptr != (Layer *)NULL)
-	{
-		pprev_ptr->next(curn_ptr);
-	}
-	else
-	{
-		inp_lay = curn_ptr;
-	}
-
-	if (nnext_ptr != (Layer *)NULL)
-	{
-		nnext_ptr->prev(curn_ptr);
-	}
-	else
-	{
-		out_lay = curn_ptr;
-	}
-};
-
-// Insert layer into existing network.
-void Network::insert(size_t postn, size_t n_new)
-{
-	if ((postn <= 0) | (postn >= n_lay )) 
-	{
-		std::cout << "Illegal insert: position is outside of possible range." << std::endl;
-		return;
-	}
-
-	Layer *next_ptr = out_lay;
-	Layer *prev_ptr = next_ptr->prev();
-
-	while (next_ptr->id() != postn)
-	{
-		next_ptr->id(next_ptr->id() + 1);
-		next_ptr = prev_ptr;
-		prev_ptr = next_ptr->prev();
-	}
-
-	Layer *pprev_ptr = prev_ptr->prev();
-	Layer *nnext_ptr = next_ptr;
-
-	nnext_ptr->id(nnext_ptr->id() + 1);
-
-	size_t n_inp = prev_ptr->nrow();
-	size_t n_out = nnext_ptr->ncol();
-
-	std::vector<Funct *> prev_potn = *(prev_ptr->f());
-
-	prev_ptr->clearMemory();
-
-	prev_ptr = new Layer(postn-1, n_new, n_inp, pprev_ptr, (Layer *)NULL);
-	next_ptr = new Layer(postn,   n_out, n_new, prev_ptr,  nnext_ptr);
-
-	prev_ptr->f_swp(prev_potn);
-
-	prev_ptr->next(next_ptr);
-	nnext_ptr->prev(next_ptr);
-
-	if (pprev_ptr != (Layer *)NULL)
-	{
-		pprev_ptr->next(prev_ptr);
-	}
-	else
-	{
-		inp_lay = prev_ptr;
-	}
-};
-
+// Check a 'foward' iterator'
 void Network::feed_foward(size_t obs_id)
 {
-	Layer *curn_lay;
+	Layer *curn_lay_ptr = head_lay_ptr;
+	curn_lay_ptr->push(obs_id, data_ptr);
+	curn_lay_ptr = curn_lay_ptr->next();
 
-	if (inp_lay != (Layer *)NULL)
+	while (curn_lay_ptr != (Layer *)NULL)
 	{
-		curn_lay = inp_lay;
-	}
-	else
-	{
-		curn_lay = out_lay;
-	}
-
-	curn_lay->push(obs_id, data);
-	curn_lay = curn_lay->next();
-
-
-	while (curn_lay != (Layer *)NULL)
-	{
-		curn_lay->push(*(curn_lay->prev()));
-		curn_lay = curn_lay->next();
+		curn_lay_ptr->push(obs_id, data_ptr);
+		curn_lay_ptr = curn_lay_ptr->next();
 	}
 };
 
 void Network::backprop(double alpha, size_t obs_id)
 {
-	Layer *curn_lay = out_lay;
-	Matrix del(curn_lay->nrow(), 1);
-	//BP 1
-	for (int i=0; i<curn_lay->nrow(); i++)
-	{
-		del[i] =(*(*(curn_lay->f()))[i]->get_grd())((*(curn_lay->z()))[i]); //del = sigma'(z)
-		del[i] *= (*( L()->get_grd())) (*(data->resp(obs_id) + i) - (*(curn_lay->a()))[i]); // del = del*grad_a(C)
-	}
-//		//BP 3
-	daxpy(-alpha, del, 1, *(curn_lay->b()), 1);
+	Layer *curn_lay_ptr = tail_lay_ptr;
+	Matrix *curn_del_ptr = new Matrix(curn_lay_ptr->nrow(), 1);
+
+	curn_lay_ptr->eval_pgrd(*(curn_lay_ptr->z()), *(curn_del_ptr));
+
+	Matrix diff(curn_lay_ptr->nrow(), 1);
+	diff.copy(*(curn_lay_ptr->a()));
+	daxpy(-1.0, (std::vector<double>)(*(data_ptr->feat(obs_id))), data_ptr->nrow(), diff, 1);
+	curn_lay_ptr->eval_pgrd(diff, diff);
+
+	Matrix tmp(curn_lay_ptr->nrow(), 1);
+	dsbmv('L', 1.0, *curn_del_ptr, 0, diff, 1, 0.0, tmp, 1);
+	curn_del_ptr->swap(tmp); 
+
+	//BP 3
+	daxpy(-alpha, *curn_del_ptr, 1, *(curn_lay_ptr->b()), 1);
 	
 	//BP 4
-	dger(-alpha, del, 1, *(curn_lay->a()), 1, *(curn_lay->w())); 
+	dger (-alpha, *curn_del_ptr, 1, *(curn_lay_ptr->prev()->a()), 1, *(curn_lay_ptr->w())); 
 	
-	curn_lay = curn_lay->prev();
+	Matrix *past_del_ptr = curn_lay_ptr;
+	curn_lay_ptr = curn_lay_ptr->prev();
+	diff.clearMemory();
 
-	Matrix *p_odel = &del;
-	
-	while(curn_lay != (Layer *)NULL)
+	while( curn_lay_ptr->prev() != (Layer *)NULL)
 	{
-		Matrix ndel(curn_lay->nrow(),1);
-		Matrix dPhi(curn_lay->nrow(),1);
+		Matrix *curn_del_ptr = new Matrix(curn_lay_ptr->nrow(), 1);
+		Matrix dPhi(curn_lay_ptr->nrow(), 1);
 
 		//BP 2
-		dgemv('T', 1.0, *(curn_lay->next()->w()), *p_odel, 1, 0.0, ndel, 1); 
-		eval_pgrd(*curn_lay->f(), *(curn_lay->z()), dPhi);
-		// dbsmv(dPhi, ndel, ndel);
-		dsbmv('U', 1.0, dPhi, 0, ndel, 1, 0.0, ndel, 1);
-		
+		dgemv('T', 1.0, *(curn_lay_ptr->next()->w()), *past_del_ptr, 1, 0.0, *curn_del_ptr, 1); 
+		curn_lay_ptr->eval_pgrd(*(curn_lay_ptr->z()), dPhi);
+
+		Matrix tmp(curn_lay_ptr->nrow(),1);
+		dsbmv('L', 1.0, dPhi, 0, *curn_del_ptr, 1, 0.0, tmp, 1);
+		curn_del_ptr->swap(tmp);
+
 		//BP 3
-		daxpy(-alpha, ndel, 1, *(curn_lay->b()), 1);
+		daxpy(-alpha, *curn_del_ptr, 1, *(curn_lay_ptr->b()), 1);
 	
 		//BP 4
-		dger(-alpha, ndel, 1, *(curn_lay->a()), 1, *(curn_lay->w())); 		
 		
-		p_odel->clearMemory();
-		p_odel = &ndel;
+		if(curn_lay_ptr->prev() != head_lay_ptr)
+		{
+			dger(-alpha, *curn_del_ptr, 1, *(curn_lay_ptr->prev()->a()), 1, *(curn_lay_ptr->w()));
+		}
+		else
+		{
+			dger(-alpha, (std::vector<double>)(*(data_ptr->feat(obs_id))), 1, *curn_del_ptr, 1, *(curn_lay_ptr->w())); 
+		}
+	
+		past_del_ptr->clearMemory();
+		past_del_ptr = curn_lay_ptr;
 		
-		curn_lay = curn_lay->prev();
-
+		curn_lay_ptr = curn_lay_ptr->prev();
 	}
 }
