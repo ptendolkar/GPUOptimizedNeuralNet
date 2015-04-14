@@ -53,6 +53,9 @@ class Layer : public Matrix
 		double eval_f(double x) { return (*((potn[0])->get_fun()))(x); }
 		double eval_g(double x) { return (*((potn[0])->get_grd()))(x); }
 
+		double eval_f(size_t i, double x) { return (*((potn[i])->get_fun()))(x); }
+		double eval_g(size_t i, double x) { return (*((potn[i])->get_grd()))(x); }
+		
 		void eval_pfun(const std::vector<double> &x, std::vector<double> &y);
 		void eval_pgrd(const std::vector<double> &x, std::vector<double> &y);
 
@@ -88,6 +91,70 @@ class Layer : public Matrix
 		void push(size_t, Data *);
 };
 
+void Layer::eval_pfun(const std::vector<double> &x, std::vector<double> &y)
+{
+	if (potn.size() == 1)
+	{
+		if (potn[0] != (Funct *)NULL)
+		{
+			for (int i = 0; i < x.size(); i++)
+			{
+				y[i] = eval_f(x[i]);
+			}
+		}
+		else
+		{
+			std::copy(x.begin(), x.end(), y.begin());	
+		}
+	}
+	else
+	{
+		for (int i = 0; i < x.size(); i++)
+		{
+			if (potn[i] != (Funct *)NULL)
+			{
+				y[i] = eval_f(i, x[i]);
+			}
+			else
+			{
+				y[i] = x[i];
+			}
+		}
+	}
+}
+
+void Layer::eval_pgrd(const std::vector<double> &x, std::vector<double> &y)
+{
+	if (potn.size() == 1)
+	{
+		if (potn[0] != (Funct *)NULL)
+		{
+			for (int i = 0; i < x.size(); i++)
+			{
+				y[i] = eval_g(x[i]);
+			}
+		}
+		else
+		{
+			std::fill(y.begin(), y.end(), 1.0);	
+		}
+	}
+	else
+	{
+		for (int i = 0; i < x.size(); i++)
+		{
+			if (potn[i] != (Funct *)NULL)
+			{
+				y[i] = eval_g(i, x[i]);
+			}
+			else
+			{
+				y[i] = 1;
+			}
+		}
+	}
+}
+
 void Layer::push(size_t obs_id, Data *data_ptr)
 {
 	flux.copy(bias);
@@ -97,13 +164,9 @@ void Layer::push(size_t obs_id, Data *data_ptr)
 	}
 	else
 	{
-		dgemv('N', 1.0, *w(),(*data_ptr->feat(obs_id)), 1, 1.0, flux, 1);
+		dgemv('N', 1.0, *w(), (std::vector<double>)(*data_ptr->feat(obs_id)), 1, 1.0, flux, 1);
 	}
-
-	for (int i=0; i<flux.size(); i++)
-	{
-		actv[i] = eval_f(flux[i]);
-	}
+	eval_pfun(flux, actv);
 }
 
 class Network
@@ -142,7 +205,7 @@ class Network
 
 			head_lay_ptr = curn_lay_ptr;
 
-			for (int i=1; i< n_lay; i++)
+			for (int i=0; i<n_lay; i++)
 			{
 				curn_lay_ptr = new Layer(i, dim_lay[i+1], dim_lay[i], prev_lay_ptr, (Layer *)NULL, f);
 				curn_lay_ptr->prev()->next(curn_lay_ptr);
@@ -172,13 +235,8 @@ class Network
 		void build(std::vector<size_t> &, Funct *);
 		void clear();
 
-		void feed_forward(size_t);
+		void feed_foward(size_t);
 		void backprop(double, size_t);
-
-		void train(double, std::vector<size_t>&, size_t);
-		void writeModelToFile(size_t);
-		void print();
-		void initialize(double , double);
 };
 
 // Clear dynamically built network fowards.
@@ -200,7 +258,7 @@ void Network::clear()
 };
 
 // Check a 'foward' iterator'
-void Network::feed_forward(size_t obs_id)
+void Network::feed_foward(size_t obs_id)
 {
 	Layer *curn_lay_ptr = head_lay_ptr;
 	curn_lay_ptr->push(obs_id, data_ptr);
@@ -218,136 +276,57 @@ void Network::backprop(double alpha, size_t obs_id)
 	Layer *curn_lay_ptr = tail_lay_ptr;
 	Matrix *curn_del_ptr = new Matrix(curn_lay_ptr->nrow(), 1);
 
-	double curn_flx;
-	double curn_act;
-	double curn_obs;
+	curn_lay_ptr->eval_pgrd(*(curn_lay_ptr->z()), *(curn_del_ptr));
 
-	for (int i = 0; i < curn_lay_ptr->nrow(); i++)
-	{
-		curn_flx = (*(curn_lay_ptr->z()))[i];
-		curn_act = (*(curn_lay_ptr->a()))[i];
-		curn_obs = *(data_ptr->resp(obs_id) + i*data_ptr->nrow());
-		(*curn_del_ptr)[i]  = curn_lay_ptr->eval_g(curn_flx);
-		(*curn_del_ptr)[i] *= (*loss->get_grd())(curn_act - curn_obs);
-	}
+	Matrix diff(curn_lay_ptr->nrow(), 1);
+	diff.copy(*(curn_lay_ptr->a()));
+	daxpy(-1.0, (std::vector<double>)(*(data_ptr->feat(obs_id))), data_ptr->nrow(), diff, 1);
+	curn_lay_ptr->eval_pgrd(diff, diff);
+
+	Matrix tmp(curn_lay_ptr->nrow(), 1);
+	dsbmv('L', 1.0, *curn_del_ptr, 0, diff, 1, 0.0, tmp, 1);
+	curn_del_ptr->swap(tmp); 
 
 	//BP 3
 	daxpy(-alpha, *curn_del_ptr, 1, *(curn_lay_ptr->b()), 1);
 	
 	//BP 4
-	if(head_lay_ptr != tail_lay_ptr)
-		dger (-alpha, *curn_del_ptr, 1, *(curn_lay_ptr->prev()->a()), 1, *(curn_lay_ptr->w())); 
-	else
-		dger(-alpha, *curn_del_ptr, 1, *(data_ptr->feat(obs_id)), 1, *(curn_lay_ptr->w()));
-
+	dger (-alpha, *curn_del_ptr, 1, *(curn_lay_ptr->prev()->a()), 1, *(curn_lay_ptr->w())); 
+	
 	Matrix *past_del_ptr = curn_lay_ptr;
 	curn_lay_ptr = curn_lay_ptr->prev();
+	diff.clearMemory();
 
-	while( curn_lay_ptr != (Layer *)NULL)
+	while( curn_lay_ptr->prev() != (Layer *)NULL)
 	{
-		curn_del_ptr = new Matrix(curn_lay_ptr->nrow(), 1);
+		Matrix *curn_del_ptr = new Matrix(curn_lay_ptr->nrow(), 1);
+		Matrix dPhi(curn_lay_ptr->nrow(), 1);
 
 		//BP 2
 		dgemv('T', 1.0, *(curn_lay_ptr->next()->w()), *past_del_ptr, 1, 0.0, *curn_del_ptr, 1); 
+		curn_lay_ptr->eval_pgrd(*(curn_lay_ptr->z()), dPhi);
 
-		for (int i=0; i<curn_lay_ptr->nrow(); i++)
-		{
-			curn_flx = (*(curn_lay_ptr->z()))[i];
-			(*curn_del_ptr)[i] *= curn_lay_ptr->eval_g(curn_flx);
-		}
+		Matrix tmp(curn_lay_ptr->nrow(),1);
+		dsbmv('L', 1.0, dPhi, 0, *curn_del_ptr, 1, 0.0, tmp, 1);
+		curn_del_ptr->swap(tmp);
 
 		//BP 3
 		daxpy(-alpha, *curn_del_ptr, 1, *(curn_lay_ptr->b()), 1);
 	
 		//BP 4
 		
-		if(curn_lay_ptr != head_lay_ptr)
+		if(curn_lay_ptr->prev() != head_lay_ptr)
 		{
 			dger(-alpha, *curn_del_ptr, 1, *(curn_lay_ptr->prev()->a()), 1, *(curn_lay_ptr->w()));
 		}
 		else
 		{
-			dger(-alpha,  *curn_del_ptr, 1, *(data_ptr->feat(obs_id)), 1,*(curn_lay_ptr->w())); 
+			dger(-alpha, (std::vector<double>)(*(data_ptr->feat(obs_id))), 1, *curn_del_ptr, 1, *(curn_lay_ptr->w())); 
 		}
 	
-		// past_del_ptr->clearMemory();
-		past_del_ptr = curn_del_ptr;
+		past_del_ptr->clearMemory();
+		past_del_ptr = curn_lay_ptr;
 		
 		curn_lay_ptr = curn_lay_ptr->prev();
 	}
 }
-
-void Network::train(double alpha, std::vector<size_t> &obs_id, size_t iterations )
-{	
-	for( size_t i = 0 ; i < iterations ; i++ ){
-		for( size_t j=0 ; j < obs_id.size(); j++ ){
-			feed_forward( obs_id[j] );
-			backprop( alpha, obs_id[j] );
-			std::cout << "obs id " << j << std::endl;
-		}
-		std::cout << "iteration " << i << std::endl;
-		this->print();
-	}	
-};
-
-void Network::writeModelToFile(size_t prec=5)
-{
-	Layer *curn_lay_ptr = tail_lay_ptr;
-	while(curn_lay_ptr->prev()!= (Layer *)NULL)
-	{
-		size_t idl = curn_lay_ptr->id();
-//		std::cout << "writing layer " << idl << std::endl;
-		std::stringstream sstm;	
-		sstm <<	"layer-" << idl << "-weights";
-		curn_lay_ptr->Matrix::writeToFile(sstm.str(), prec);	
-		
-		sstm.str("");
-		sstm.clear();
-		sstm << "layer-" << idl << "-biases";
-		(*(curn_lay_ptr->b())).writeToFile(sstm.str(), prec);
-		
-		curn_lay_ptr = curn_lay_ptr->prev();
-	}
-};
-
-void Network::print()
-{
-	Layer *curn_lay_ptr = tail_lay_ptr;
-
-	std::cout << "====== Layer " << curn_lay_ptr->id() << " ======" << std::endl;
-	curn_lay_ptr->print();
-	curn_lay_ptr = curn_lay_ptr->prev();
-	
-	while(curn_lay_ptr != (Layer *)NULL)
-	{
-		std::cout << "====== Layer " << curn_lay_ptr->id() << " ======" << std::endl;
-		curn_lay_ptr->print();
-		curn_lay_ptr = curn_lay_ptr->prev();
-	}
-	std::cout << "======\n\n";
-};
-
-void Network::initialize(double mean = 0, double sigma = 1){
-	Layer *curn_lay_ptr = tail_lay_ptr;
-	while(curn_lay_ptr != (Layer *)NULL)
-	{
-		curn_lay_ptr->w()->initialize(mean, sigma);
-		curn_lay_ptr = curn_lay_ptr->prev();
-	}
-};
-
-/*Matrix Network::predict(std::vector<double> &inp)
-{
-	Data* dat = data;
-	Data tmp_dat(inp);
-	
-	data = &tmp_dat;
-	feed_forward(0);
-	data = dat;
-
-	Matrix out(out_lay->nrow(),1);
-
-	out.swap(*(out_lay->a()));
-
-	return out;
-};*/

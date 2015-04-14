@@ -154,10 +154,18 @@ extern "C"
 //y  <--  alpha*x + y
 void daxpy(double alpha, const std::vector<double> &x, const int inc_x, std::vector<double> &y, const int inc_y)
 {
-	const int n = x.size();
+	const int n = y.size();
 
 	daxpy_(&n, &alpha, &*x.begin(), &inc_x, &*y.begin(), &inc_y);
 }
+
+void daxpy(double alpha, const double &x, const int inc_x, std::vector<double> &y, const int inc_y)
+{
+	const int n = y.size();
+
+	daxpy_(&n, &alpha, &x, &inc_x, &*y.begin(), &inc_y);
+}
+
 void dgemv(const char TrA, const double alpha, const Matrix &A, const std::vector<double> &x, const int inc_x, const double beta, std::vector<double> &y, const int inc_y)
 {
 
@@ -165,24 +173,10 @@ void dgemv(const char TrA, const double alpha, const Matrix &A, const std::vecto
 	int N;
 	
 	int LDA = A.nrow();
-/*
-	switch(TrA)
-	{
-		case 'N':
-		{*/
-			M = A.nrow();
-			N = A.ncol();
-/*			break;
-		}
-		case 'T':
-		{
-			M = A.ncol();
-			N = A.nrow();
-			break;
-		}
-	}*/
+	M = A.nrow();
+	N = A.ncol();
 
-	dgemv_(&TrA, &M, &N, &alpha, &*A.std::vector<double>::begin(), &LDA, &*x.begin(), &inc_x, &beta, &*y.begin(), &inc_y); 
+	dgemv_(&TrA, &M, &N, &alpha, &*A.std::vector<double>::begin(), &LDA, &*x.begin() , &inc_x, &beta, &*y.begin(), &inc_y); 
 }
 void dgemv(const char TrA, const double alpha, const Matrix &A, const double &x, const int inc_x, const double beta, std::vector<double> &y, const int inc_y)
 {
@@ -191,44 +185,31 @@ void dgemv(const char TrA, const double alpha, const Matrix &A, const double &x,
 
 	int LDA = A.nrow();
 
-	switch(TrA)
-	{
-		case 'N':
-		{
-			M = A.nrow();
-			N = A.ncol();
-			break;
-		}
-		case 'T':
-		{
-			N = A.ncol();
-			M = A.nrow();
-			break;
-		}
-	}
-
+	M = A.nrow();
+	N = A.ncol();
+	
 	dgemv_(&TrA, &M, &N, &alpha, &*A.begin(), &LDA, &x, &inc_x, &beta, &*y.begin(), &inc_y); 
 }
 
 // k = 1 and LDA = 1 for a diagonal matrix (0 = n_super = n_lower), stored columnwise in a 1 x N vector where N is the number of columns of A
 
-void dsbmv(const char *UPLO, const double alpha, const Matrix &A, const int K, const std::vector<double> &x, const int inc_x, const double beta, std::vector<double> &y, const int inc_y)
+void dsbmv(const char UPLO, const double alpha, const Matrix &A, const int K, const std::vector<double> &x, const int inc_x, const double beta, std::vector<double> &y, const int inc_y)
 {
 	int N = A.nrow();
 	int LDA = 1;
 
-	dsbmv_(UPLO, &N, &K, &alpha, &*A.std::vector<double>::begin(), &LDA, &*x.begin(), &inc_x, &beta, &*y.begin(), &inc_y); 
+	dsbmv_(&UPLO, &N, &K, &alpha, &*A.std::vector<double>::begin(), &LDA, &*x.begin(), &inc_x, &beta, &*y.begin(), &inc_y); 
 }
 
 //A := alpha*x*y**T + A 
-void dger(const double alpha, double &x, const int inc_x, const std::vector<double> &y, const int inc_y, Matrix &A)
+void dger(const double alpha, const std::vector<double>  &x, const int inc_x, const double &y, const int inc_y, Matrix &A)
 {
 	int M  = A.nrow();
 	int N  = A.ncol();
 
 	int LDA = A.nrow();
 
-	dger_(&M, &N, &alpha, &*y.begin(), &inc_x, &x, &inc_y, &*A.std::vector<double>::begin(), &LDA);
+	dger_(&M, &N, &alpha, &*x.begin(), &inc_x, &y, &inc_y, &*A.std::vector<double>::begin(), &LDA);
 }
 
 //A := alpha*x*y**T + A 
