@@ -43,8 +43,15 @@ int main(int argc, char *argv[])
 	int devID = 0;	
 	initializeCUDA(argc, argv, devID);
 	
-	double h_A[9] = {2.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 2.0};
-	double h_B[9] = {2.0, 3.0, 4.0, 2.0, 3.0, 4.0, 2.0, 3.0, 4.0};
+//	double h_A[9] = {2.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 2.0};
+//	double h_B[9] = {2.0, 3.0, 4.0, 2.0, 3.0, 4.0, 2.0, 3.0, 4.0};
+	
+	Matrix h_A(3,3);
+	Matrix h_B(3,3,2);
+
+	Matrix h_C(3,3);
+
+	h_A.identity();
 	
     	double *d_A, *d_B, *d_C;
 	
@@ -60,8 +67,8 @@ int main(int argc, char *argv[])
 
 	checkCudaErrors(cudaMalloc((void **) &d_A, mem_size_A));
     	checkCudaErrors(cudaMalloc((void **) &d_B, mem_size_B));
-    	checkCudaErrors(cudaMemcpy(d_A, &h_A, mem_size_A, cudaMemcpyHostToDevice));
-    	checkCudaErrors(cudaMemcpy(d_B, &h_B, mem_size_B, cudaMemcpyHostToDevice));
+    	checkCudaErrors(cudaMemcpy(d_A, &h_A.front(), mem_size_A, cudaMemcpyHostToDevice));
+    	checkCudaErrors(cudaMemcpy(d_B, &h_B.front(), mem_size_B, cudaMemcpyHostToDevice));
     	checkCudaErrors(cudaMalloc((void **) &d_C, mem_size_C));
 
         const double alpha = 1.0f;
@@ -72,7 +79,7 @@ int main(int argc, char *argv[])
 
         checkCudaErrors(cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, 3, 3, 3, &alpha, d_A, 3, d_B, 3, &beta, d_C, 3));
 
-        checkCudaErrors(cudaMemcpy(h_CUBLAS, d_C, mem_size_C, cudaMemcpyDeviceToHost));
+        checkCudaErrors(cudaMemcpy(&h_C.front(), d_C, mem_size_C, cudaMemcpyDeviceToHost));
 
         checkCudaErrors(cublasDestroy(handle));
    
@@ -82,10 +89,12 @@ int main(int argc, char *argv[])
 
 	std::cout << "output" << std::endl;
 	
-	for (int i = 0; i < 9; i++)
+/*	for (int i = 0; i < 9; i++)
 		std::cout << h_CUBLAS[i] << " ";
 	std::cout << std::endl;
-
+*/
+	h_C.print();
+	
 	std::cout << "test successful" << std::endl;
 	return 0;	
 }
