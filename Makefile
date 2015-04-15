@@ -383,8 +383,6 @@ matrixMulCUBLAS.o:matrixMulCUBLAS.cpp
 	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
 
 matrixMulCUBLAS: matrixMulCUBLAS.o
-	@echo "library includes"
-	@echo $(LIBRARIES)
 	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_LDFLAGS) $(GENCODE_FLAGS) -o $@ $+ $(LIBRARIES)
 #	$(EXEC) mkdir -p ../../bin/$(OS_ARCH)/$(OSLOWER)/$(TARGET)$(if $(abi),/$(abi))
 #	$(EXEC) cp $@ ../../bin/$(OS_ARCH)/$(OSLOWER)/$(TARGET)$(if $(abi),/$(abi))
@@ -394,6 +392,5 @@ run: build
 
 clean:
 	rm -f matrixMulCUBLAS matrixMulCUBLAS.o
-	rm -rf ../../bin/$(OS_ARCH)/$(OSLOWER)/$(TARGET)$(if $(abi),/$(abi))/matrixMulCUBLAS
 
 clobber: clean
