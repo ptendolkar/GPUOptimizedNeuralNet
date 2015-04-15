@@ -179,7 +179,7 @@ class Network
 		void writeModelToFile(size_t);
 		void print();
 		void initialize(double , double);
-		
+
 		Matrix predict(std::vector<double>&);
 };
 
@@ -327,13 +327,23 @@ void Network::print()
 	Layer *curn_lay_ptr = tail_lay_ptr;
 
 	std::cout << "====== Layer " << curn_lay_ptr->id() << " ======" << std::endl;
+	std::cout << "Weights" << std::endl;
 	curn_lay_ptr->print();
+	
+	std::cout << "Biases" << std::endl;
+	curn_lay_ptr->b()->print();
+
 	curn_lay_ptr = curn_lay_ptr->prev();
 	
 	while(curn_lay_ptr != (Layer *)NULL)
 	{
 		std::cout << "====== Layer " << curn_lay_ptr->id() << " ======" << std::endl;
+		std::cout << "Weights" << std::endl;
 		curn_lay_ptr->print();
+	
+		std::cout << "Biases" << std::endl;
+		curn_lay_ptr->b()->print();		
+
 		curn_lay_ptr = curn_lay_ptr->prev();
 	}
 	std::cout << "======\n\n";
@@ -356,12 +366,6 @@ Matrix Network::predict(std::vector<double> &inp)
 	data_ptr = &tmp_dat;
 	feed_forward(0);
 	data_ptr = dat;
-
-	Matrix out(tail_lay_ptr->prev()->nrow(),1);
-	out.swap(*(tail_lay_ptr->a()));
-
-	data_ptr = 0;
-
-	return out;
-
+	
+	return *(tail_lay_ptr->a());
 };
