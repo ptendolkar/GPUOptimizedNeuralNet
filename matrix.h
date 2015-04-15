@@ -152,7 +152,7 @@ extern "C"
 }
 
 //y  <--  alpha*x + y
-void daxpy(double alpha, const std::vector<double> &x, const int inc_x, std::vector<double> &y, const int inc_y)
+void daxpy(const double alpha, const std::vector<double> &x, const int inc_x, std::vector<double> &y, const int inc_y)
 {
 	const int n = y.size();
 
@@ -168,26 +168,21 @@ void daxpy(double alpha, const double &x, const int inc_x, std::vector<double> &
 
 void dgemv(const char TrA, const double alpha, const Matrix &A, const std::vector<double> &x, const int inc_x, const double beta, std::vector<double> &y, const int inc_y)
 {
+	int M = A.nrow();
+	int N = A.ncol();
 
-	int M;
-	int N;
-	
 	int LDA = A.nrow();
-	M = A.nrow();
-	N = A.ncol();
 
 	dgemv_(&TrA, &M, &N, &alpha, &*A.std::vector<double>::begin(), &LDA, &*x.begin() , &inc_x, &beta, &*y.begin(), &inc_y); 
 }
+
 void dgemv(const char TrA, const double alpha, const Matrix &A, const double &x, const int inc_x, const double beta, std::vector<double> &y, const int inc_y)
 {
-	int M;
-	int N;
+	int M = A.nrow();
+	int N = A.ncol();
 
 	int LDA = A.nrow();
 
-	M = A.nrow();
-	N = A.ncol();
-	
 	dgemv_(&TrA, &M, &N, &alpha, &*A.begin(), &LDA, &x, &inc_x, &beta, &*y.begin(), &inc_y); 
 }
 

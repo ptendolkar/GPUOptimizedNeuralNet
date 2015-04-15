@@ -179,6 +179,8 @@ class Network
 		void writeModelToFile(size_t);
 		void print();
 		void initialize(double , double);
+		
+		Matrix predict(std::vector<double>&);
 };
 
 // Clear dynamically built network fowards.
@@ -240,7 +242,9 @@ void Network::backprop(double alpha, size_t obs_id)
 	else
 		dger(-alpha, *curn_del_ptr, 1, *(data_ptr->feat(obs_id)), 1, *(curn_lay_ptr->w()));
 
-	Matrix *past_del_ptr = curn_lay_ptr;
+	Matrix *past_del_ptr = curn_del_ptr;
+	curn_del_ptr = NULL;
+
 	curn_lay_ptr = curn_lay_ptr->prev();
 
 	while( curn_lay_ptr != (Layer *)NULL)
@@ -269,12 +273,20 @@ void Network::backprop(double alpha, size_t obs_id)
 		{
 			dger(-alpha,  *curn_del_ptr, 1, *(data_ptr->feat(obs_id)), 1,*(curn_lay_ptr->w())); 
 		}
-	
-		// past_del_ptr->clearMemory();
+
+		delete past_del_ptr;	
+		past_del_ptr = NULL;
 		past_del_ptr = curn_del_ptr;
+		curn_del_ptr = NULL;
 		
 		curn_lay_ptr = curn_lay_ptr->prev();
 	}
+
+	past_del_ptr = NULL;
+	delete curn_del_ptr;
+	curn_del_ptr = NULL;
+	//delete past_del_ptr;
+	//past_del_ptr = curn_del_ptr = (Matrix *)NULL;
 }
 
 void Network::train(double alpha, std::vector<size_t> &obs_id, size_t iterations )
@@ -336,18 +348,20 @@ void Network::initialize(double mean = 0, double sigma = 1){
 	}
 };
 
-/*Matrix Network::predict(std::vector<double> &inp)
+Matrix Network::predict(std::vector<double> &inp)
 {
-	Data* dat = data;
+	Data* dat = data_ptr;
 	Data tmp_dat(inp);
 	
-	data = &tmp_dat;
+	data_ptr = &tmp_dat;
 	feed_forward(0);
-	data = dat;
+	data_ptr = dat;
 
-	Matrix out(out_lay->nrow(),1);
+	Matrix out(tail_lay_ptr->prev()->nrow(),1);
+	out.swap(*(tail_lay_ptr->a()));
 
-	out.swap(*(out_lay->a()));
+	data_ptr = 0;
 
 	return out;
-};*/
+
+};
