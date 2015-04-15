@@ -1,3 +1,4 @@
+cublas_multiplication_demo.o*
 *.o
 *.swp
 *~

@@ -144,7 +144,7 @@ ALL_LDFLAGS += $(addprefix -Xlinker ,$(LDFLAGS))
 ALL_LDFLAGS += $(addprefix -Xlinker ,$(EXTRA_LDFLAGS))
 
 # Common includes and paths for CUDA
-INCLUDES  := -I../../common/inc -I$(GSL)/include
+INCLUDES  := -I../../common/inc -I$(GSL)/include 
 LIBRARIES :=
 
 ################################################################################
@@ -175,7 +175,7 @@ endif
 endif
 
 #INCLUDES += -I$(GSL)/include  
-LIBRARIES += -lcublas
+LIBRARIES += -rpath=$(OPENBLAS)/lib -lopenblas -lcublas
 
 #GSL = /opt/gsl/1.15/gnu4/
 
@@ -328,8 +328,9 @@ ALL_LDFLAGS += $(addprefix -Xlinker ,$(EXTRA_LDFLAGS))
 
 # Common includes and paths for CUDA
 GSL = /opt/gsl/1.15/gnu4/
-INCLUDES  := -I../../common/inc -I$(GSL)include -rpath=$(OPENBLAS)/lib -lopenblas
-LIBRARIES := 
+OPENBLAS = /opt/openblas/0.2.3/gnu4/Opteron/
+INCLUDES  := -Iinc -I$(GSL)include -I$(OPENBLAS)include
+LIBRARIES :=
 
 ################################################################################
 
@@ -357,8 +358,8 @@ ifneq ($(HIGHEST_SM),)
 GENCODE_FLAGS += -gencode arch=compute_$(HIGHEST_SM),code=compute_$(HIGHEST_SM)
 endif
 endif
-
-LIBRARIES += -lcublas
+OPENBLAS = /opt/openblas/0.2.3/gnu4/Opteron
+LIBRARIES += -L$(GSL)/lib -lgsl -lgslcblas -lcublas
 
 ifeq ($(SAMPLE_ENABLED),0)
 EXEC ?= @echo "[@]"
@@ -382,9 +383,11 @@ matrixMulCUBLAS.o:matrixMulCUBLAS.cpp
 	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
 
 matrixMulCUBLAS: matrixMulCUBLAS.o
-	$(EXEC) $(NVCC) $(ALL_LDFLAGS) $(GENCODE_FLAGS) -o $@ $+ $(LIBRARIES)
-	$(EXEC) mkdir -p ../../bin/$(OS_ARCH)/$(OSLOWER)/$(TARGET)$(if $(abi),/$(abi))
-	$(EXEC) cp $@ ../../bin/$(OS_ARCH)/$(OSLOWER)/$(TARGET)$(if $(abi),/$(abi))
+	@echo "library includes"
+	@echo $(LIBRARIES)
+	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_LDFLAGS) $(GENCODE_FLAGS) -o $@ $+ $(LIBRARIES)
+#	$(EXEC) mkdir -p ../../bin/$(OS_ARCH)/$(OSLOWER)/$(TARGET)$(if $(abi),/$(abi))
+#	$(EXEC) cp $@ ../../bin/$(OS_ARCH)/$(OSLOWER)/$(TARGET)$(if $(abi),/$(abi))
 
 run: build
 	$(EXEC) ./matrixMulCUBLAS
