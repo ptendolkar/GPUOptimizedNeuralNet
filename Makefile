@@ -379,7 +379,7 @@ else
 	@echo "Sample is ready - all dependencies have been met"
 endif
 
-matrixMulCUBLAS.o:matrixMulCUBLAS.cpp
+matrixMulCUBLAS.o:example.cpp
 	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
 
 matrixMulCUBLAS: matrixMulCUBLAS.o
