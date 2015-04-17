@@ -295,10 +295,10 @@ void Network::train(double alpha, std::vector<size_t> &obs_id, size_t iterations
 		for( size_t j=0 ; j < obs_id.size(); j++ ){
 			feed_forward( obs_id[j] );
 			backprop( alpha, obs_id[j] );
-			std::cout << "obs id " << j << std::endl;
+//			std::cout << "obs id " << j << std::endl;
 		}
-		std::cout << "iteration " << i << std::endl;
-		this->print();
+//		std::cout << "iteration " << i << std::endl;
+//		this->print();
 	}	
 };
 
@@ -369,3 +369,5 @@ Matrix Network::predict(std::vector<double> &inp)
 	
 	return *(tail_lay_ptr->a());
 };
+
+
