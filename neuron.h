@@ -152,6 +152,108 @@ class Network
 			tail_lay_ptr = curn_lay_ptr;
 		};
 
+		Network(std::string filename, Funct *f , Funct *l, Data *train)
+		{
+			char delim = ' ';
+
+			loss = l;
+			data_ptr = train; 
+
+			head_lay_ptr = (Layer *)NULL;
+			tail_lay_ptr = (Layer *)NULL;
+
+			std::fstream 		input(filename.c_str());
+			std::string  		line;
+
+						
+			/* first, get the layer dimensions stored in first line */
+			std::getline(input, line);
+			std::stringstream 	ss(line);
+
+			std::vector<size_t> dim_lay;	
+			std::string item;
+			while(std::getline(ss, item, delim))
+			{
+				size_t d = atoi(item.c_str());
+				dim_lay.push_back(d);
+			}
+			
+			if (dim_lay.size() < 2)
+			{
+				std::cout << "Insufficient parameters to create a network." << std::endl;
+				return;
+			}
+			
+			n_lay = dim_lay.size() - 1;
+			
+			Layer *curn_lay_ptr = new Layer(0, dim_lay[1], dim_lay[0], (Layer *)NULL, (Layer *)NULL, f);
+			Layer *prev_lay_ptr = curn_lay_ptr;
+
+			head_lay_ptr = curn_lay_ptr;
+			
+			std::getline(input, line);
+			ss.str("");
+			ss.clear(); // Clear state flags.
+			ss.str(line);
+
+			double *curn_elem_ptr;
+			
+			curn_elem_ptr = &curn_lay_ptr->front();
+			while(std::getline(ss, item, delim))
+			{
+				*(curn_elem_ptr++) = atof(item.c_str());
+			}
+
+			std::getline(input, line);
+			ss.str("");
+			ss.clear(); // Clear state flags.
+			ss.str(line);
+			
+			curn_elem_ptr = &curn_lay_ptr->b()->front();
+			while(std::getline(ss, item, delim))
+			{
+				*(curn_elem_ptr++) = atof(item.c_str());
+			}
+
+			/* read two lines in per layer, the first line for weights, and the second line for biases*/
+			for (int i = 1; i < n_lay; i++)
+			{
+				std::getline(input, line);
+				ss.str("");
+				ss.clear(); // Clear state flags.
+				ss.str(line);
+
+				std::string item;
+			
+				curn_lay_ptr = new Layer(i, dim_lay[i+1], dim_lay[i], prev_lay_ptr, (Layer *)NULL, f);
+				curn_lay_ptr->prev()->next(curn_lay_ptr);
+				prev_lay_ptr = curn_lay_ptr;
+				
+
+				curn_elem_ptr = &curn_lay_ptr->front();
+				while(std::getline(ss, item, delim))
+				{
+					*(curn_elem_ptr++) = atof(item.c_str());
+				}
+
+				std::getline(input, line);
+				ss.str("");
+				ss.clear(); // Clear state flags.
+				ss.str(line);
+	
+				
+				curn_elem_ptr = &curn_lay_ptr->b()->front();
+				while(std::getline(ss, item, delim))
+				{
+					*(curn_elem_ptr++) = atof(item.c_str());
+				}
+			} 
+			
+			tail_lay_ptr = curn_lay_ptr;
+
+		}
+
+
 		size_t depth() const { return n_lay; }
 		Layer  *head() const { return head_lay_ptr; }
 		Layer  *tail() const { return tail_lay_ptr; }
@@ -176,7 +278,7 @@ class Network
 		void backprop(double, size_t);
 
 		void train(double, std::vector<size_t>&, size_t);
-		void writeModelToFile(size_t);
+		void writeModelToFile(std::string, size_t);
 		void print();
 		void initialize(double , double);
 
@@ -302,24 +404,40 @@ void Network::train(double alpha, std::vector<size_t> &obs_id, size_t iterations
 	}	
 };
 
-void Network::writeModelToFile(size_t prec=5)
+
+void Network::writeModelToFile(std::string filename, size_t prec=5)
 {
-	Layer *curn_lay_ptr = tail_lay_ptr;
-	while(curn_lay_ptr->prev()!= (Layer *)NULL)
+	std::ofstream my_file(filename.c_str(), std::ios::trunc);
+	
+	Layer *curn_lay_ptr = head_lay_ptr;
+	my_file << data_ptr->nfea() << " "; 
+	while(curn_lay_ptr->next() != (Layer *)  NULL)
 	{
-		size_t idl = curn_lay_ptr->id();
-//		std::cout << "writing layer " << idl << std::endl;
-		std::stringstream sstm;	
-		sstm <<	"layer-" << idl << "-weights";
-		curn_lay_ptr->Matrix::writeToFile(sstm.str(), prec);	
-		
-		sstm.str("");
-		sstm.clear();
-		sstm << "layer-" << idl << "-biases";
-		(*(curn_lay_ptr->b())).writeToFile(sstm.str(), prec);
-		
-		curn_lay_ptr = curn_lay_ptr->prev();
+		my_file << curn_lay_ptr->ncol() <<  " ";
+		curn_lay_ptr = curn_lay_ptr->next();
 	}
+		my_file << tail_lay_ptr->nrow() << "\n";
+	
+	curn_lay_ptr = head_lay_ptr;
+	while(curn_lay_ptr != (Layer*)NULL)
+	{
+		
+		for(int i = 0; i < curn_lay_ptr->size() ; i++)
+		{
+			double val = (&curn_lay_ptr->front())[i];
+			my_file << std::setprecision(prec) << val << " ";
+		}
+			my_file << "\n";
+		for(int i = 0; i < curn_lay_ptr->b()->size(); i++)
+		{
+			double val = (&curn_lay_ptr->b()->front())[i];
+			my_file << std::setprecision(prec) << val << " ";
+		}	
+			my_file << "\n";
+
+		curn_lay_ptr = curn_lay_ptr->next();
+	}
+	my_file.close();
 };
 
 void Network::print()
@@ -369,5 +487,4 @@ Matrix Network::predict(std::vector<double> &inp)
 	
 	return *(tail_lay_ptr->a());
 };
-
 

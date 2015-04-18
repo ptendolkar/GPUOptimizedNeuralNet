@@ -33,8 +33,11 @@ int main(int argc, char* argv[])
 	Funct L(&sqloss, &dsqloss);
 	Funct Phi(&lact, &lgrd);
 	Funct Psi(&tanh, &dtanh);
-
-	Network net(dim, &Psi, &L, &d);
+	
+	Network net("modelfile_created", &Psi, &L, &d);
+	net.print();
+	net.writeModelToFile("modelfile_created");
+	/*Network net(dim, &Psi, &L, &d);
 
 	std::vector<size_t> obs(4);
 	obs[0] = 0;
@@ -49,7 +52,8 @@ int main(int argc, char* argv[])
 	
 	net.print();
 	net.train(a, obs, n);
-/*	
+*/
+/*
 	double del = .1;
 	for(int i=-1; i < 1.1; i+= del)
 	{
