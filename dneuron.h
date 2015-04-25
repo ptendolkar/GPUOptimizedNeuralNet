@@ -1,4 +1,4 @@
-#include "matrix.h"
+#include "dmatrix.h"
 #include "data.h"
 
 class Matrix;
@@ -11,17 +11,18 @@ class Funct
 		double (*grd)(double);
 
 	public:
-		Funct() : fun(NULL), grd(NULL) {}
-		Funct(double (*f)(double), double (*g)(double)) : fun(f), grd(g) {}
+		__host__ __device__ Funct() : fun(NULL), grd(NULL) {}
+		__host__ __device__ Funct(double (*f)(double), double (*g)(double)) : fun(f), grd(g) {}
 
+		__host__ __device__ 
 		~Funct()
 		{
 			fun = NULL;
 			grd = NULL;
 		};
 
-		double (*get_fun())(double) const { return fun; }
-		double (*get_grd())(double) const { return grd; }
+		__host__ __device__ double (*get_fun())(double) const { return fun; }
+		__host__ __device__ double (*get_grd())(double) const { return grd; }
 };
 
 class Layer : public Matrix
@@ -88,23 +89,6 @@ class Layer : public Matrix
 		__host__ __device__ void push(size_t, Data *);
 };
 
-__host__ __device__ void Layer::push(size_t obs_id, Data *data_ptr)
-{
-	flux.copy(bias);
-	if (prev() != (Layer *)NULL)
-	{
-		dgemv('N', 1.0, *w(), *(prev()->a()), 1, 1.0, flux, 1);
-	}
-	else
-	{
-		dgemv('N', 1.0, *w(),(*data_ptr->feat(obs_id)), 1, 1.0, flux, 1);
-	}
-
-	for (int i=0; i<flux.size(); i++)
-	{
-		actv[i] = eval_f(flux[i]);
-	}
-}
 
 class Network
 {
@@ -116,6 +100,8 @@ class Network
 		Data   *data_ptr;
 
 	public:
+		static cublasHandle_t handle;
+
 		__host__ __device__ Network() : n_lay(0), head_lay_ptr((Layer *)NULL), tail_lay_ptr((Layer *)NULL), data_ptr((Data *)NULL), loss((Funct *)NULL) {}
 
 // Build network dynamically fowards (head to tail) from the output layer.  Single layer network (e.g. logistic regression) will have NULL input layer pointer,
@@ -282,6 +268,7 @@ class Network
 
 		__host__ __device__ Matrix predict(std::vector<double>&);
 };
+cublasHandle_t Network::handle = NULL;
 
 // Clear dynamically built network fowards.
 __host__ __device__ void Network::clear()
@@ -352,7 +339,7 @@ __host__ __device__ void Network::backprop(double alpha, size_t obs_id)
 		curn_del_ptr = new Matrix(curn_lay_ptr->nrow(), 1);
 
 		//BP 2
-		dgemv('T', 1.0, *(curn_lay_ptr->next()->w()), *past_del_ptr, 1, 0.0, *curn_del_ptr, 1); 
+		dgemv(CUBLAS_OP_T, 1.0, *(curn_lay_ptr->next()->w()), *past_del_ptr, 1, 0.0, *curn_del_ptr, 1); 
 
 		for (int i=0; i<curn_lay_ptr->nrow(); i++)
 		{
@@ -485,4 +472,23 @@ Matrix Network::predict(std::vector<double> &inp)
 	
 	return *(tail_lay_ptr->a());
 };
+
+__host__ __device__ void Layer::push(size_t obs_id, Data *data_ptr)
+{
+	flux.copy(bias);
+	if (prev() != (Layer *)NULL)
+	{
+		
+		dgemv(CUBLAS_OP_N, 1.0, *w(), *(prev()->a()), 1, 1.0, flux, 1);
+	}
+	else
+	{
+		dgemv(CUBLAS_OP_N, 1.0, *w(),(*data_ptr->feat(obs_id)), 1, 1.0, flux, 1);
+	}
+
+	for (int i=0; i<flux.size(); i++)
+	{
+		actv[i] = eval_f(flux[i]);
+	}
+}
 
