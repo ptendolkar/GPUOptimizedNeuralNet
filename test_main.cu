@@ -5,7 +5,7 @@
 #include <helper_string.h>  // helper for shared functions common to CUDA Samples
 // CUDA runtime
 #include <cuda_runtime.h>
-#include <cublas_v2.h>
+//#include <cublas_v2.h>
 // CUDA and CUBLAS functions
 #include <helper_functions.h>
 #include <helper_cuda.h>
@@ -29,11 +29,14 @@ double lgrd(double x)
 	return 1.0;
 }
 
-__global__ void initializeMatrix(Matrix **M)
+/*__global__ void initializeMatrix(Matrix **M)
 {
 
+	}
+*/
+__global__ void newmatrix(Matrix *M){
+	M = new Matrix(5,5);
 }
-
 int main(int argc, char* argv[])
 {
 	int cuda_device = 0;
@@ -52,37 +55,13 @@ int main(int argc, char* argv[])
     	    exit(EXIT_SUCCESS);
     	}
 	
-	/*Data d("training", ' ', 1);
-
-	std::vector<size_t> dim(3);
-	dim[0] = 2;
-	dim[1] = 2;
-	dim[2] = 1;
-
-	Funct L(&sqloss, &dsqloss);
-	Funct Phi(&lact, &lgrd);
-	Funct Psi(&tanh, &dtanh);	
-	*/
-	//checkCudaErrors(cublasCreate(&cuHandle::handle)); 
-	//Network net(dim, &Psi, &L, &d);
-	
 	cudaDeviceSetLimit(cudaLimitMallocHeapSize, 512 * (1 << 20));
 	
-	Matrix M;
-	M = Matrix(5,5,0);
-	M.identity();
-	M.print();
-
-	Matrix N = Matrix(5,1,1);
-	N.print();
-
-	Matrix O = Matrix(5,1,2);	
-	O.print();
-
-//	sgemv(CUBLAS_OP_N, 1.0, M, N, 1, 1.0, O, 1);
-	saxpy(1.0, N, 1, O, 1);  
-	O.print();
-	//initializeMatrix<<<1,1>>>(d_M);
+	Matrix *d_M;
+	cudaMalloc(&d_M, sizeof(Matrix *));
+	newmatrix<<<1,1>>>(d_M);
+	
+	std::cout << "completed" << std::endl;
 		
 	return 0;
 }

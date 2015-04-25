@@ -34,6 +34,9 @@ double lgrd(double x)
 
 	}
 */
+__global__ newmatrix(Matrix **M){
+	*M = new Matrix(5,5);
+}
 int main(int argc, char* argv[])
 {
 	int cuda_device = 0;
@@ -69,11 +72,11 @@ int main(int argc, char* argv[])
 	cudaDeviceSetLimit(cudaLimitMallocHeapSize, 512 * (1 << 20));
 	
 	Matrix **d_M;
+	cudaMalloc(&d_M, sizeof(Matrix **));
+	newmatrix<<<1,1>>>(d_M);
 	
-	//cudaMalloc(&d_M, sizeof(Matrix **));
-
-	*M = Matrix(5,5,0);
-	(*M)->print();
+	std::cout << "completed" << std::endl;
+//	(*M)->print();
 //	(*M)->initialize();
 //	(*M)->print();
 	
