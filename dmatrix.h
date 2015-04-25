@@ -1,199 +1,148 @@
-#include <vector>
-#include <string.h>
-#include <stdio.h>
-#include <iomanip>
 #include <iostream>
-#include <fstream>
-#include <gsl/gsl_randist.h>
-#include <gsl/gsl_rng.h>
+
 #include <assert.h>
 #include <helper_string.h>  // helper for shared functions common to CUDA Samples
 // CUDA runtime
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
+#include <cublas_api.h>
 // CUDA and CUBLAS functions
 #include <helper_functions.h>
 #include <helper_cuda.h>
 
-class cuHandle
+
+__global__ void kernelFill(float x, float * mat)
 {
-	public:
-		static cublasHandle_t handle;
+	mat[threadIdx.x] = x;
+}
 
-};
-cublasHandle_t cuHandle::handle = NULL;
-
-class Matrix : public std::vector<double>
+class Matrix 
 {
 	private:
-		size_t n_row;
-		size_t n_col;	
-
+		int n_row;
+		int n_col;	
+		float* M;
 	public:
 		
-		
-		__host__ __device__ Matrix() : n_row(0), n_col(0) {}
-		__host__ __device__ Matrix(size_t m, size_t n) : std::vector<double>(m*n), n_row(m), n_col(n) {}
-		__host__ __device__ Matrix(size_t m, size_t n, double entries) : std::vector<double>(m*n, entries), n_row(m), n_col(n) {}
-		__host__ __device__ Matrix(const Matrix &Y) : std::vector<double>(Y), n_row(Y.nrow()), n_col(Y.ncol()) {} 
-
-		__host__ __device__ void reserve(size_t m, size_t n)
-			{std::vector<double>reserve(m*n);}
-		__host__ __device__ void resize(size_t m, size_t n)
-			{n_row=m; n_col=n; std::vector<double>resize(m*n);}
-		__host__ __device__ void clear()
-			{n_row=0; n_col=0; std::vector<double>clear();}
-
-		__host__ __device__ size_t nrow() const {return n_row;}
-		__host__ __device__ size_t ncol() const {return n_col;}
-
-		__host__ __device__ void nrow(size_t i){ this->n_row = i;}
-		__host__ __device__ void ncol(size_t j){ this->n_col = j;}
-
-		__host__ __device__ double & operator()(size_t i, size_t j)
-		{
-			return operator[](i + j*n_row);
-		};
-		__host__ __device__ const double & operator()(size_t i, size_t j) const
-		{
-			return operator[](i + j*n_row);
-		};
-
-		__host__ __device__ void copy(const Matrix &Y)
-		{
-			std::copy(Y.std::vector<double>::begin(), Y.std::vector<double>::end(), this->std::vector<double>::begin());
-			n_row = Y.nrow();
-			n_col = Y.ncol();
+		__device__ Matrix() : M(NULL), n_row(0), n_col(0) {;}
+		__device__ Matrix(size_t m, size_t n) {
+			n_row = m;
+			n_col = n;
+			M = new float[m*n];
 		}
-
-		__host__ __device__ void swap(Matrix &Y)
+		__device__ ~Matrix()
 		{
-			std::vector<double>::swap(Y);
-			std::swap(n_row, Y.n_row);
-			std::swap(n_col, Y.n_col);
-		};
+			n_row=n_col=0;
+			delete[] M;
+			M = (float *) NULL;
+		}	
 		
-		void writeToFile(std::string filename, int prec=5){
-			std::ofstream myfile(filename.c_str(), std::ios::trunc);
-			for(int i = 0; i < n_row; i++){
-				for(int j = 0; j < n_col; j++){
-					
-					myfile << std::setprecision(prec) << (*this)(i,j); 
-					if(j < n_col-1)
-						myfile << " ";
-					else
-						myfile << "\n";
-				}
-			}		
-			myfile.close();
+		__host__ __device__ float * getM(){ return M; }
 
+		__host__ void fill(float x)
+		{
+			int jobs = n_row*n_col;
+			kernelFill<<<1, jobs>>>(x, getM());
+		}
+		
+		__host__ __device__ int size() { return n_row*n_col;}
+		__host__ __device__ int nrow() { return n_row; }
+		__host__ __device__ int ncol() { return n_col; }
+
+		float * begin()
+		{
+			return M;
+		}
+		
+		float * end()
+		{
+			return M + (n_row*n_col);
+		}
+		
+		void write(size_t i, size_t j, float x)
+		{
+			M[i + j*n_row] = x;
 		};
-	
+		float read(size_t i, size_t j)
+		{
+			return M[i + j*n_row];
+		};
+
+				
 		void print(){
-			
+
 			if(n_row == 0 || n_col == 0){
 				std::cout << "not initialized" << std::endl;
 				return;
 			}
-		//	std::cout << "Rows: " << this->n_row << ", Cols: " << this->n_col << std::endl;
 			for(int i = 0; i < n_row; i++){
 				for(int j = 0; j < n_col; j++){
 						
-					std::cout.width(10);
-					std::cout << std::fixed << std::showpoint;
-					std::cout << std::left << std::setprecision(5)  << (*this)(i,j) << " "; 	
+				//	std::cout.width(10);
+				//	std::cout << std::fixed << std::showpoint;
+					std::cout << /*std::left << std::setprecision(5)  <<*/ read(i,j) << " "; 	
 				}
 				std::cout << std::endl;
 			}			
 		};
 		
-		void initialize(double mean = 0, double sigma = 1){
 
-			const gsl_rng_type * T;
-			gsl_rng * r;
-			
-			r = gsl_rng_alloc(gsl_rng_mt19937);
-
-			for( int i = 0; i < n_row*n_col; i++ ){	
-		
-				(*this)[i] = gsl_ran_gaussian(r, sigma);
-				(*this)[i] = mean + (*this)[i];
-
-			}
-				gsl_rng_free(r);
-		};
-
-		void convertToColumnMajor(Matrix &X){
-			Matrix A(X.nrow(), X.ncol());
-			
-			for( int i = 0; i< X.nrow(); i++){
-				for( int j = 0 ; j < X.ncol(); j++){
-					A(i,j) = X[i*X.ncol() + j];
-				}
-			}
-			X.swap(A);
-		};
-
-		void identity(){
+		  void identity(){
 			if( this->n_row != this->n_col){
 				std::cout << " identity(): Not a square matrix" << std::endl;
 			}else{
 				for(int i = 0; i < this->n_row; i++){
 					for(int j = 0; j < this->n_col; j++){
 						if(i == j)
-							(*this)(i,j) = 1;
+							write(i, j, 1.0);
 						else
-							(*this)(i,j) = 0;
+							write(i, j, 0.0);
 					}
 				}
 			}
 		};
 	
-		void clearMemory()
-			{
-			Matrix empty;
-			swap(empty);
-		};
 };
 
 /*extern "C"
 {
 	// Level 1
-	void daxpy_(const int *N, const double *ALPHA, const double *X, const int *INCX, double *Y, const int *INCY);
+	void daxpy_(const int *N, const float *ALPHA, const float *X, const int *INCX, float *Y, const int *INCY);
 
 	// Level 2
-	void dgemv_(const char *TRANSA, const int *M, const int *N, const double *ALPHA, const double *A, const int *LDA, const double *X, const int *INCX, const double *BETA, double *Y, const int *INCY);
-	void dsbmv_(const char *UPLO, const int *N, const int *K, const double *ALPHA, const double *A, const int *LDA, const double *X, const int *INCX, const double *BETA, double *Y, const int *INCY);
-	void dger_ (const int *M, const int *N, const double *ALPHA, const double *X, const int *INCX, const double *Y, const int *INCY, double *A, const int *LDA);
-	void dgemm_(const char *TRANSA, const char *TRANSB, const int *M, const int *N, const int *K, const double *ALPHA, const double *A, const int *LDA, const double *B, const int *LDB, const double *BETA, const double *C, const int *LDC);
+	void dgemv_(const char *TRANSA, const int *M, const int *N, const float *ALPHA, const float *A, const int *LDA, const float *X, const int *INCX, const float *BETA, float *Y, const int *INCY);
+	void dsbmv_(const char *UPLO, const int *N, const int *K, const float *ALPHA, const float *A, const int *LDA, const float *X, const int *INCX, const float *BETA, float *Y, const int *INCY);
+	void dger_ (const int *M, const int *N, const float *ALPHA, const float *X, const int *INCX, const float *Y, const int *INCY, float *A, const int *LDA);
+	void dgemm_(const char *TRANSA, const char *TRANSB, const int *M, const int *N, const int *K, const float *ALPHA, const float *A, const int *LDA, const float *B, const int *LDB, const float *BETA, const float *C, const int *LDC);
 }
 */
 //y  <--  alpha*x + y
-void daxpy(const double alpha, const std::vector<double> &x, const int inc_x, std::vector<double> &y, const int inc_y)
+
+/*void saxpy(const float alpha, const thrust::device_vector<float> &x, const int inc_x, thrust::device_vector<float> &y, const int inc_y)
 {
 	const int n = y.size();
 
-	cublasDaxpy(cuHandle::handle, n, &alpha, &*x.begin(), inc_x, &*y.begin(), inc_y);
+	cublasSaxpy(cuHandle::handle, n, &alpha, thrust::raw_pointer_cast(&x[0]), inc_x, thrust::raw_pointer_cast(&y[0]), inc_y);
 }
-
-void daxpy(double alpha, const double &x, const int inc_x, std::vector<double> &y, const int inc_y)
+*//*
+void daxpy(float alpha, const float &x, const int inc_x, thrust::device_vector<float> &y, const int inc_y)
 {
 	const int n = y.size();
 
 	cublasDaxpy(cuHandle::handle, n, &alpha, &x, inc_x, &*y.begin(), inc_y);
 }
-
-void dgemv(cublasOperation_t trans, const double alpha, const Matrix &A, const std::vector<double> &x, const int inc_x, const double beta, std::vector<double> &y, const int inc_y)
+*//*
+void sgemv(cublasOperation_t trans, const float alpha, const Matrix &A, const thrust::device_vector<float> &x, const int inc_x, const float beta, thrust::device_vector<float> &y, const int inc_y)
 {
 	int M = A.nrow();
 	int N = A.ncol();
 
 	int LDA = A.nrow();
 
-	cublasDgemv(cuHandle::handle, trans, M, N, &alpha, &*A.std::vector<double>::begin(), LDA, &*x.begin() , inc_x, &beta, &*y.begin(), inc_y); 
+	cublasSgemv(cuHandle::handle, trans, M, N, &alpha, thrust::raw_pointer_cast(&A[0]), LDA, thrust::raw_pointer_cast(&x[0]) , inc_x, &beta, thrust::raw_pointer_cast(&y[0]), inc_y); 
 }
-
-void dgemv(cublasOperation_t trans, const double alpha, const Matrix &A, const double &x, const int inc_x, const double beta, std::vector<double> &y, const int inc_y)
+*//*
+void dgemv(cublasOperation_t trans, const float alpha, const Matrix &A, const float &x, const int inc_x, const float beta, thrust::device_vector<float> &y, const int inc_y)
 {
 	int M = A.nrow();
 	int N = A.ncol();
@@ -202,39 +151,40 @@ void dgemv(cublasOperation_t trans, const double alpha, const Matrix &A, const d
 
 	cublasDgemv(cuHandle::handle, trans, M, N, &alpha, &*A.begin(), LDA, &x, inc_x, &beta, &*y.begin(), inc_y); 
 }
-
+*/
 // k = 1 and LDA = 1 for a diagonal matrix (0 = n_super = n_lower), stored columnwise in a 1 x N vector where N is the number of columns of A
 
-/*void dsbmv(const char UPLO, const double alpha, const Matrix &A, const int K, const std::vector<double> &x, const int inc_x, const double beta, std::vector<double> &y, const int inc_y)
+/*void dsbmv(const char UPLO, const float alpha, const Matrix &A, const int K, const thrust::device_vector<float> &x, const int inc_x, const float beta, thrust::device_vector<float> &y, const int inc_y)
 {
 	int N = A.nrow();
 	int LDA = 1;
 
-	dsbmv_(&UPLO, &N, &K, &alpha, &*A.std::vector<double>::begin(), &LDA, &*x.begin(), &inc_x, &beta, &*y.begin(), &inc_y); 
+	dsbmv_(&UPLO, &N, &K, &alpha, &*A.thrust::device_vector<float>::begin(), &LDA, &*x.begin(), &inc_x, &beta, &*y.begin(), &inc_y); 
 }*/
 
 //A := alpha*x*y**T + A 
-void dger(const double alpha, const std::vector<double>  &x, const int inc_x, const double &y, const int inc_y, Matrix &A)
+/*
+void dger(const float alpha, const thrust::device_vector<float>  &x, const int inc_x, const float &y, const int inc_y, Matrix &A)
 {
 	int M  = A.nrow();
 	int N  = A.ncol();
 
 	int LDA = A.nrow();
 
-	cublasDger(cuHandle::handle, M, N, &alpha, &*x.begin(), inc_x, &y, inc_y, &*A.std::vector<double>::begin(), LDA);
+	cublasDger(cuHandle::handle, M, N, &alpha, &*x.begin(), inc_x, &y, inc_y, &*A.thrust::device_vector<float>::begin(), LDA);
 }
 
 //A := alpha*x*y**T + A 
-void dger(const double alpha, const std::vector<double> &x, const int inc_x, const std::vector<double> &y, const int inc_y, Matrix &A)
+void dger(const float alpha, const thrust::device_vector<float> &x, const int inc_x, const thrust::device_vector<float> &y, const int inc_y, Matrix &A)
 {
 	int M  = A.nrow();
 	int N  = A.ncol();
 
 	int LDA = A.nrow();
 
-	cublasDger(cuHandle::handle, M, N, &alpha, &*x.begin(), inc_x, &*y.begin(), inc_y, &*A.std::vector<double>::begin(), LDA);
+	cublasDger(cuHandle::handle, M, N, &alpha, &*x.begin(), inc_x, &*y.begin(), inc_y, &*A.thrust::device_vector<float>::begin(), LDA);
 }
-void dgemm(cublasOperation_t TrA, cublasOperation_t TrB, double alpha, Matrix &A, Matrix &B, double beta, Matrix &C)
+void dgemm(cublasOperation_t TrA, cublasOperation_t TrB, float alpha, Matrix &A, Matrix &B, float beta, Matrix &C)
 
 {
 	int M;
@@ -292,6 +242,6 @@ void dgemm(cublasOperation_t TrA, cublasOperation_t TrB, double alpha, Matrix &A
 	}
 
 
-	cublasDgemm(cuHandle::handle,TrA, TrB, M, N, K, &alpha, &*A.std::vector<double>::begin(), LDA, &*B.std::vector<double>::begin(), LDB, &beta, &*C.std::vector<double>::begin(), LDC);
+	cublasDgemm(cuHandle::handle,TrA, TrB, M, N, K, &alpha, &*A.thrust::device_vector<float>::begin(), LDA, &*B.thrust::device_vector<float>::begin(), LDB, &beta, &*C.thrust::device_vector<float>::begin(), LDC);
 } 
-
+*/

@@ -153,9 +153,9 @@ SAMPLE_ENABLED := 1
 
 # Gencode arguments
 ifeq ($(OS_ARCH),armv7l)
-SMS ?= 20 30 32 35 37 50
+SMS ?= 30 32 35 37 50
 else
-SMS ?= 11 20 30 35 37 50
+SMS ?= 30 35 37 50
 endif
 
 ifeq ($(SMS),)
@@ -338,9 +338,9 @@ SAMPLE_ENABLED := 1
 
 # Gencode arguments
 ifeq ($(OS_ARCH),armv7l)
-SMS ?= 20 30 32 35 37 50
+SMS ?= 30 32 35 37 50
 else
-SMS ?= 11 20 30 35 37 50
+SMS ?= 30 35 37 50
 endif
 
 ifeq ($(SMS),)
@@ -358,7 +358,6 @@ ifneq ($(HIGHEST_SM),)
 GENCODE_FLAGS += -gencode arch=compute_$(HIGHEST_SM),code=compute_$(HIGHEST_SM)
 endif
 endif
-OPENBLAS = 
 LIBRARIES += -lcublas 
 
 ifeq ($(SAMPLE_ENABLED),0)
