@@ -1,5 +1,4 @@
 #include <iostream>
-
 #include <assert.h>
 #include <helper_string.h>  // helper for shared functions common to CUDA Samples
 // CUDA runtime
@@ -59,37 +58,37 @@ class Matrix
 			return M + (n_row*n_col);
 		}
 		
-		void write(size_t i, size_t j, float x)
+		__device__ void write(size_t i, size_t j, float x)
 		{
 			M[i + j*n_row] = x;
-		};
-		float read(size_t i, size_t j)
+		}
+		__device__ float read(size_t i, size_t j)
 		{
 			return M[i + j*n_row];
-		};
+		}
 
 				
-		void print(){
+		__device__ void print(){
 
 			if(n_row == 0 || n_col == 0){
-				std::cout << "not initialized" << std::endl;
+				printf("empty matrix\n");
 				return;
 			}
-			for(int i = 0; i < n_row; i++){
-				for(int j = 0; j < n_col; j++){
-						
-				//	std::cout.width(10);
-				//	std::cout << std::fixed << std::showpoint;
-					std::cout << /*std::left << std::setprecision(5)  <<*/ read(i,j) << " "; 	
+			for(int i = 0; i < n_row; i++)
+			{
+				for(int j = 0; j < n_col; j++)
+				{
+					printf("%f ", read(i,j));	
 				}
-				std::cout << std::endl;
+				printf("\n");
 			}			
-		};
+		}
 		
 
-		  void identity(){
+		 __device__ void identity(){
 			if( this->n_row != this->n_col){
-				std::cout << " identity(): Not a square matrix" << std::endl;
+				printf("empty matrix\n");
+				return;
 			}else{
 				for(int i = 0; i < this->n_row; i++){
 					for(int j = 0; j < this->n_col; j++){
@@ -100,7 +99,7 @@ class Matrix
 					}
 				}
 			}
-		};
+		}
 	
 };
 
