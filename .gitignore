@@ -1,4 +1,5 @@
 *.o
+gpu_neuron_project.o*
 *.swp
 *~
 layer-*
