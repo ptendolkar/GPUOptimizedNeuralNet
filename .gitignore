@@ -1,5 +1,6 @@
 *.o
 gpu_neuron_project.o*
+core.*
 .gdbinit
 *.swp
 *~
