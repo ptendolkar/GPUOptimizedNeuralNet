@@ -9,19 +9,18 @@
 // CUDA and CUBLAS functions
 #include <helper_functions.h>
 #include <helper_cuda.h>
-
-#include "dmatrix.h"
 #include <stdio.h>
 
-__global__ void newmatrix(Matrix * M, Matrix * N, Matrix *O )
-{
-	printf("inside kernel\n");
-	M = new Matrix(3,3);
-	M->print();
-	printf("\n");
-	M->initialize();
+#include "dneuron.h"
 
-	M->print();
+__global__ void train( Network *net, DevData *dd, float *dX, int  n_row, int n_col, int n_rsp, int n_fea)
+{
+	printf("in train kernel\n");
+	for (int i= 0; i< n_row*n_col; i++){
+		printf("%f ", dX[i]);
+	}
+	printf("\n");
+	dd = new DevData(dX, n_row, n_col, n_rsp, n_fea);
 }
 
 int main(int argc, char* argv[])
@@ -36,19 +35,20 @@ int main(int argc, char* argv[])
 	//cudaDeviceSetLimit(cudaLimitMallocHeapSize, 512 * (1 << 20));
 	
 	std::cout << "before allocation" << std::endl;
-	Matrix *d_M, *d_N, *d_O;
-	cudaMalloc(&d_M, sizeof(Matrix *));
-	cudaMalloc(&d_N, sizeof(Matrix *));
-	cudaMalloc(&d_O, sizeof(Matrix *));
 
-	newmatrix<<<1,1>>>(d_M, d_N, d_O);
+	Data d("training", ' ', 2);
+	DevData *dd;
+	Network *net;
+	
+	cudaMalloc(&dd, sizeof(DevData *));
+	cudaMalloc(&net, sizeof(Network *));
+
+	train<<<1,1>>>(net, dd, thrust::raw_pointer_cast(&(d.X[0])), d.nrow(), d.ncol(), d.nrsp(), d.nfea());
 	cudaDeviceSynchronize();
 
 	std::cout << "completed" << std::endl;
-		
-	//saxpy(1.0, *d_M->begin(), 1, *d_N->begin(), 1);
-
 	cudaDeviceReset();
+
 	return 0;
 
 }

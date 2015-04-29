@@ -1,82 +1,76 @@
 #include "dmatrix.h"
-#include "data.h"
+#include "ddata.h"
 
-class Matrix;
-class Data;
+class DevMatrix;
+class DevData;
 
 class Funct 
 {
 	private:
-		double (*fun)(double);
-		double (*grd)(double);
+		float (*fun)(float);
+		float (*grd)(float);
 
 	public:
-		__host__ __device__ Funct() : fun(NULL), grd(NULL) {}
-		__host__ __device__ Funct(double (*f)(double), double (*g)(double)) : fun(f), grd(g) {}
+		 __device__ Funct() : fun(NULL), grd(NULL) {}
+		 __device__ Funct(float (*f)(float), float (*g)(float)) : fun(f), grd(g) {}
 
-		__host__ __device__ 
+		 __device__ 
 		~Funct()
 		{
 			fun = NULL;
 			grd = NULL;
 		};
 
-		__host__ __device__ double (*get_fun())(double) const { return fun; }
-		__host__ __device__ double (*get_grd())(double) const { return grd; }
+		 __device__ float (*get_fun())(float) { return fun; }
+		 __device__ float (*get_grd())(float) { return grd; }
 };
 
-class Layer : public Matrix
+class Layer : public DevMatrix
 {
 	private:
 		size_t iden;
 		Layer  *prev_lay_ptr;
 		Layer  *next_lay_ptr;
-		Matrix bias;
-		Matrix flux;
-		Matrix actv;
-		std::vector<Funct *> potn;
+		DevMatrix bias;
+		DevMatrix flux;
+		DevMatrix actv;
+		Funct * potn; //new Funct *[10]
 
 	public:
-		__host__ __device__ Layer() : Matrix(), iden(0), prev_lay_ptr((Layer *)NULL), next_lay_ptr((Layer *)NULL), bias(), flux(), actv(), potn() {}
-		__host__ __device__ Layer(size_t i, size_t m, size_t n) : Matrix(m,n), iden(i), prev_lay_ptr((Layer *)NULL), next_lay_ptr((Layer *)NULL), bias(m,1), flux(m,1), actv(m,1), potn() {}
-		__host__ __device__ Layer(size_t i, size_t m, size_t n, Layer *ipp, Layer *inn)	: Matrix(m,n), iden(i), prev_lay_ptr(ipp), next_lay_ptr(inn), bias(m,1), flux(m,1), actv(m,1), potn() {}
-		__host__ __device__ Layer(size_t i, size_t m, size_t n, Layer *ipp, Layer *inn, Funct *f) : Matrix(m,n), iden(i), prev_lay_ptr(ipp), next_lay_ptr(inn), bias(m,1), flux(m,1), actv(m,1), potn(1,f) {}
+		 __device__ Layer() : DevMatrix(), iden(0), prev_lay_ptr((Layer *)NULL), next_lay_ptr((Layer *)NULL), bias(), flux(), actv(), potn() {}
+		 __device__ Layer(size_t i, size_t m, size_t n) : DevMatrix(m,n), iden(i), prev_lay_ptr((Layer *)NULL), next_lay_ptr((Layer *)NULL), bias(m,1), flux(m,1), actv(m,1), potn() {}
+		 __device__ Layer(size_t i, size_t m, size_t n, Layer *ipp, Layer *inn)	: DevMatrix(m,n), iden(i), prev_lay_ptr(ipp), next_lay_ptr(inn), bias(m,1), flux(m,1), actv(m,1), potn() {}
+		 __device__ Layer(size_t i, size_t m, size_t n, Layer *ipp, Layer *inn, Funct *f) : DevMatrix(m,n), iden(i), prev_lay_ptr(ipp), next_lay_ptr(inn), bias(m,1), flux(m,1), actv(m,1), potn(f) {}
 
-		__host__ __device__ size_t id()   const { return iden; }
-		__host__ __device__ Layer* prev() const { return prev_lay_ptr; }
-		__host__ __device__ Layer* next() const { return next_lay_ptr; }
+		 __device__ size_t id()   const { return iden; }
+		 __device__ Layer* prev() const { return prev_lay_ptr; }
+		 __device__ Layer* next() const { return next_lay_ptr; }
 
-		__host__ __device__ Matrix* w() /* const */ { return (Matrix*) this; }
-		__host__ __device__ Matrix* b() /* const */ { return &bias; }
-		__host__ __device__ Matrix* z() /* const */ { return &flux; }
-		__host__ __device__ Matrix* a() /* const */ { return &actv; }
+		 __device__ DevMatrix* w() /* const */ { return (DevMatrix*) this; }
+		 __device__ DevMatrix* b() /* const */ { return &bias; }
+		 __device__ DevMatrix* z() /* const */ { return &flux; }
+		 __device__ DevMatrix* a() /* const */ { return &actv; }
 
-		__host__ __device__ double eval_f(double x) { return (*((potn[0])->get_fun()))(x); }
-		__host__ __device__ double eval_g(double x) { return (*((potn[0])->get_grd()))(x); }
+		 __device__ float eval_f(float x) { return (*((potn[0])->get_fun()))(x); }
+		 __device__ float eval_g(float x) { return (*((potn[0])->get_grd()))(x); }
 
-		__host__ __device__ void eval_pfun(const std::vector<double> &x, std::vector<double> &y);
-		__host__ __device__ void eval_pgrd(const std::vector<double> &x, std::vector<double> &y);
+		 __device__ void eval_pfun(const std::vector<float> &x, std::vector<float> &y);
+		 __device__ void eval_pgrd(const std::vector<float> &x, std::vector<float> &y);
 
-		__host__ __device__ void id(size_t i)     { iden = i; }
-		__host__ __device__ void prev(Layer *lay) { prev_lay_ptr = lay; }
-		__host__ __device__ void next(Layer *lay) { next_lay_ptr = lay; }
-		__host__ __device__ void f(size_t i, Funct *Phi) { potn[i] = Phi; }
+		 __device__ void id(size_t i)     { iden = i; }
+		 __device__ void prev(Layer *lay) { prev_lay_ptr = lay; }
+		 __device__ void next(Layer *lay) { next_lay_ptr = lay; }
+		 __device__ void f(size_t i, Funct *Phi) { potn[i] = Phi; }
 
-		__host__ __device__ void w_swp(std::vector<double > &x)   { this->std::vector<double>::swap(x); }
-		__host__ __device__ void b_swp(std::vector<double > &x)   { bias.std::vector<double >::swap(x); }
-		__host__ __device__ void z_swp(std::vector<double > &x)   { flux.std::vector<double >::swap(x); }
-		__host__ __device__ void a_swp(std::vector<double > &x)   { actv.std::vector<double >::swap(x); }
-		__host__ __device__ void f_swp(std::vector<Funct *> &Phi) { potn.std::vector<Funct *>::swap(Phi); }
-
-		__host__ __device__ void swap(Layer &lay)
+		 __device__ void swap(Layer &lay)
 		{
-			this->Matrix::swap(lay);
+			this->DevMatrix::swap(lay);
 			std::swap(iden, lay.iden);
 			std::swap(prev_lay_ptr, lay.prev_lay_ptr);
 			std::swap(next_lay_ptr, lay.next_lay_ptr);
-			bias.std::vector<double >::swap(lay.bias);
-			flux.std::vector<double >::swap(lay.flux);
-			actv.std::vector<double >::swap(lay.actv);
+			bias.std::vector<float >::swap(lay.bias);
+			flux.std::vector<float >::swap(lay.flux);
+			actv.std::vector<float >::swap(lay.actv);
 			potn.std::vector<Funct *>::swap(lay.potn);
 		};
 
@@ -86,7 +80,7 @@ class Layer : public Matrix
 			swap(empty);
 		};
 
-		__host__ __device__ void push(size_t, Data *);
+		 __device__ void push(size_t, DevData *);
 };
 
 
@@ -97,17 +91,16 @@ class Network
 		Layer  *head_lay_ptr;
 		Layer  *tail_lay_ptr;
 		Funct  *loss;
-		Data   *data_ptr;
+		DevData   *data_ptr;
 
 	public:
-		static cublasHandle_t handle;
 
-		__host__ __device__ Network() : n_lay(0), head_lay_ptr((Layer *)NULL), tail_lay_ptr((Layer *)NULL), data_ptr((Data *)NULL), loss((Funct *)NULL) {}
+		 __device__ Network() : n_lay(0), head_lay_ptr((Layer *)NULL), tail_lay_ptr((Layer *)NULL), data_ptr((DevData *)NULL), loss((Funct *)NULL) {}
 
 // Build network dynamically fowards (head to tail) from the output layer.  Single layer network (e.g. logistic regression) will have NULL input layer pointer,
 // but all networks must have an output.  The first entry of the dimension array is the size of the covariate space, and the last entry is the size of the output space.
 
-		__host__ __device__ Network(std::vector<size_t> &dim_lay, Funct *f, Funct *l, Data *train)
+		 __device__ Network(std::vector<size_t> &dim_lay, Funct *f, Funct *l, DevData *train)
 		{
 			loss = l;
 			data_ptr = train; 
@@ -138,113 +131,13 @@ class Network
 			tail_lay_ptr = curn_lay_ptr;
 		};
 
-		__host__ __device__ Network(std::string filename, Funct *f , Funct *l, Data *train)
-		{
-			char delim = ' ';
+		 __device__ size_t depth() const { return n_lay; }
+		 __device__ Layer  *head() const { return head_lay_ptr; }
+		 __device__ Layer  *tail() const { return tail_lay_ptr; }
+		 __device__ Funct  *lfun() const { return loss; }
+		 __device__ Data   *data() const { return data_ptr; }
 
-			loss = l;
-			data_ptr = train; 
-
-			head_lay_ptr = (Layer *)NULL;
-			tail_lay_ptr = (Layer *)NULL;
-
-			std::fstream 		input(filename.c_str());
-			std::string  		line;
-						
-			/* first, get the layer dimensions stored in first line */
-			std::getline(input, line);
-			std::stringstream 	ss(line);
-
-			std::vector<size_t> dim_lay;	
-			std::string item;
-			while(std::getline(ss, item, delim))
-			{
-				size_t d = atoi(item.c_str());
-				dim_lay.push_back(d);
-			}
-			
-			if (dim_lay.size() < 2)
-			{
-				std::cout << "Insufficient parameters to create a network." << std::endl;
-				return;
-			}
-			
-			n_lay = dim_lay.size() - 1;
-			
-			Layer *curn_lay_ptr = new Layer(0, dim_lay[1], dim_lay[0], (Layer *)NULL, (Layer *)NULL, f);
-			Layer *prev_lay_ptr = curn_lay_ptr;
-
-			head_lay_ptr = curn_lay_ptr;
-			
-			std::getline(input, line);
-			ss.str("");
-			ss.clear(); // Clear state flags.
-			ss.str(line);
-
-			double *curn_elem_ptr;
-			
-			curn_elem_ptr = &curn_lay_ptr->front();
-			while(std::getline(ss, item, delim))
-			{
-				*(curn_elem_ptr++) = atof(item.c_str());
-			}
-
-			std::getline(input, line);
-			ss.str("");
-			ss.clear(); // Clear state flags.
-			ss.str(line);
-			
-			curn_elem_ptr = &curn_lay_ptr->b()->front();
-			while(std::getline(ss, item, delim))
-			{
-				*(curn_elem_ptr++) = atof(item.c_str());
-			}
-
-			/* read two lines in per layer, the first line for weights, and the second line for biases*/
-			for (int i = 1; i < n_lay; i++)
-			{
-				std::getline(input, line);
-				ss.str("");
-				ss.clear(); // Clear state flags.
-				ss.str(line);
-
-				std::string item;
-			
-				curn_lay_ptr = new Layer(i, dim_lay[i+1], dim_lay[i], prev_lay_ptr, (Layer *)NULL, f);
-				curn_lay_ptr->prev()->next(curn_lay_ptr);
-				prev_lay_ptr = curn_lay_ptr;
-				
-
-				curn_elem_ptr = &curn_lay_ptr->front();
-				while(std::getline(ss, item, delim))
-				{
-					*(curn_elem_ptr++) = atof(item.c_str());
-				}
-
-				std::getline(input, line);
-				ss.str("");
-				ss.clear(); // Clear state flags.
-				ss.str(line);
-	
-				
-				curn_elem_ptr = &curn_lay_ptr->b()->front();
-				while(std::getline(ss, item, delim))
-				{
-					*(curn_elem_ptr++) = atof(item.c_str());
-				}
-			} 
-			
-			tail_lay_ptr = curn_lay_ptr;
-
-		}
-
-		__host__ __device__ size_t depth() const { return n_lay; }
-		__host__ __device__ Layer  *head() const { return head_lay_ptr; }
-		__host__ __device__ Layer  *tail() const { return tail_lay_ptr; }
-		__host__ __device__ Funct  *lfun() const { return loss; }
-		__host__ __device__ Data   *data() const { return data_ptr; }
-
-		__host__ __device__ ~Network()
+		 __device__ ~Network()
 		{
 			n_lay        = 0;
 			head_lay_ptr = (Layer *)NULL;
@@ -253,25 +146,25 @@ class Network
 			data_ptr     = (Data  *)NULL;
 		};
 
-		__host__ __device__ Layer depth(size_t i) { n_lay = i; }
+		 __device__ Layer depth(size_t i) { n_lay = i; }
 
-		__host__ __device__ void build(std::vector<size_t> &, Funct *);
-		__host__ __device__ void clear();
+		 __device__ void build(std::vector<size_t> &, Funct *);
+		 __device__ void clear();
 
-		__host__ __device__ void feed_forward(size_t);
-		__host__ __device__ void backprop(double, size_t);
+		 __device__ void feed_forward(size_t);
+		 __device__ void backprop(float, size_t);
 
-	 	__host__ void train(double, std::vector<size_t>&, size_t);
-		__host__ void writeModelToFile(std::string, size_t);
-		__host__ void print();
-		__host__ void initialize(double , double);
+	 	 __device__ void train(float, std::vector<size_t>&, size_t);
+		 __device__ void writeModelToFile(std::string, size_t);
 
-		__host__ __device__ Matrix predict(std::vector<double>&);
+		 void print();
+
+		 __device__ DevMatrix predict(std::vector<float>&);
 };
 cublasHandle_t Network::handle = NULL;
 
 // Clear dynamically built network fowards.
-__host__ __device__ void Network::clear()
+ __device__ void Network::clear()
 {
 	Layer *curn_lay_ptr = head_lay_ptr;
 	Layer *next_lay_ptr = curn_lay_ptr->next();
@@ -289,7 +182,7 @@ __host__ __device__ void Network::clear()
 };
 
 // Check a 'foward' iterator'
-__host__ __device__ void Network::feed_forward(size_t obs_id)
+ __device__ void Network::feed_forward(size_t obs_id)
 {
 	Layer *curn_lay_ptr = head_lay_ptr;
 	curn_lay_ptr->push(obs_id, data_ptr);
@@ -302,14 +195,14 @@ __host__ __device__ void Network::feed_forward(size_t obs_id)
 	}
 };
 
-__host__ __device__ void Network::backprop(double alpha, size_t obs_id)
+ __device__ void Network::backprop(float alpha, size_t obs_id)
 {
 	Layer *curn_lay_ptr = tail_lay_ptr;
-	Matrix *curn_del_ptr = new Matrix(curn_lay_ptr->nrow(), 1);
+	DevMatrix *curn_del_ptr = new DevMatrix(curn_lay_ptr->nrow(), 1);
 
-	double curn_flx;
-	double curn_act;
-	double curn_obs;
+	float curn_flx;
+	float curn_act;
+	float curn_obs;
 
 	for (int i = 0; i < curn_lay_ptr->nrow(); i++)
 	{
@@ -329,14 +222,14 @@ __host__ __device__ void Network::backprop(double alpha, size_t obs_id)
 	else
 		dger(-alpha, *curn_del_ptr, 1, *(data_ptr->feat(obs_id)), 1, *(curn_lay_ptr->w()));
 
-	Matrix *past_del_ptr = curn_del_ptr;
+	DevMatrix *past_del_ptr = curn_del_ptr;
 	curn_del_ptr = NULL;
 
 	curn_lay_ptr = curn_lay_ptr->prev();
 
 	while( curn_lay_ptr != (Layer *)NULL)
 	{
-		curn_del_ptr = new Matrix(curn_lay_ptr->nrow(), 1);
+		curn_del_ptr = new DevMatrix(curn_lay_ptr->nrow(), 1);
 
 		//BP 2
 		dgemv(CUBLAS_OP_T, 1.0, *(curn_lay_ptr->next()->w()), *past_del_ptr, 1, 0.0, *curn_del_ptr, 1); 
@@ -373,10 +266,10 @@ __host__ __device__ void Network::backprop(double alpha, size_t obs_id)
 	delete curn_del_ptr;
 	curn_del_ptr = NULL;
 	//delete past_del_ptr;
-	//past_del_ptr = curn_del_ptr = (Matrix *)NULL;
+	//past_del_ptr = curn_del_ptr = (DevMatrix *)NULL;
 }
 
-__host__ __device__ void Network::train(double alpha, std::vector<size_t> &obs_id, size_t iterations )
+ __device__ void Network::train(float alpha, std::vector<size_t> &obs_id, size_t iterations )
 {	
 	for( size_t i = 0 ; i < iterations ; i++ ){
 		for( size_t j=0 ; j < obs_id.size(); j++ ){
@@ -389,70 +282,7 @@ __host__ __device__ void Network::train(double alpha, std::vector<size_t> &obs_i
 	}	
 };
 
-
-__host__ void Network::writeModelToFile(std::string filename, size_t prec=5)
-{
-	std::ofstream my_file(filename.c_str(), std::ios::trunc);
-	
-	Layer *curn_lay_ptr = head_lay_ptr;
-	my_file << data_ptr->nfea() << " "; 
-	while(curn_lay_ptr->next() != (Layer *)  NULL)
-	{
-		my_file << curn_lay_ptr->ncol() <<  " ";
-		curn_lay_ptr = curn_lay_ptr->next();
-	}
-		my_file << tail_lay_ptr->nrow() << "\n";
-	
-	curn_lay_ptr = head_lay_ptr;
-	while(curn_lay_ptr != (Layer*)NULL)
-	{
-		
-		for(int i = 0; i < curn_lay_ptr->size() ; i++)
-		{
-			double val = (&curn_lay_ptr->front())[i];
-			my_file << std::setprecision(prec) << val << " ";
-		}
-			my_file << "\n";
-		for(int i = 0; i < curn_lay_ptr->b()->size(); i++)
-		{
-			double val = (&curn_lay_ptr->b()->front())[i];
-			my_file << std::setprecision(prec) << val << " ";
-		}	
-			my_file << "\n";
-
-		curn_lay_ptr = curn_lay_ptr->next();
-	}
-	my_file.close();
-};
-
-__host__ void Network::print()
-{
-	Layer *curn_lay_ptr = tail_lay_ptr;
-
-	std::cout << "====== Layer " << curn_lay_ptr->id() << " ======" << std::endl;
-	std::cout << "Weights" << std::endl;
-	curn_lay_ptr->print();
-	
-	std::cout << "Biases" << std::endl;
-	curn_lay_ptr->b()->print();
-
-	curn_lay_ptr = curn_lay_ptr->prev();
-	
-	while(curn_lay_ptr != (Layer *)NULL)
-	{
-		std::cout << "====== Layer " << curn_lay_ptr->id() << " ======" << std::endl;
-		std::cout << "Weights" << std::endl;
-		curn_lay_ptr->print();
-	
-		std::cout << "Biases" << std::endl;
-		curn_lay_ptr->b()->print();		
-
-		curn_lay_ptr = curn_lay_ptr->prev();
-	}
-	std::cout << "======\n\n";
-};
-
-__host__ void Network::initialize(double mean = 0, double sigma = 1){
+void Network::initialize(float mean = 0, float sigma = 1){
 	Layer *curn_lay_ptr = tail_lay_ptr;
 	while(curn_lay_ptr != (Layer *)NULL)
 	{
@@ -461,19 +291,7 @@ __host__ void Network::initialize(double mean = 0, double sigma = 1){
 	}
 };
 
-Matrix Network::predict(std::vector<double> &inp)
-{
-	Data* dat = data_ptr;
-	Data tmp_dat(inp);
-	
-	data_ptr = &tmp_dat;
-	feed_forward(0);
-	data_ptr = dat;
-	
-	return *(tail_lay_ptr->a());
-};
-
-__host__ __device__ void Layer::push(size_t obs_id, Data *data_ptr)
+ __device__ void Layer::push(size_t obs_id, DevData *data_ptr)
 {
 	flux.copy(bias);
 	if (prev() != (Layer *)NULL)

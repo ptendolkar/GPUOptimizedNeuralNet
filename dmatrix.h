@@ -1,4 +1,3 @@
-#include <iostream>
 #include <assert.h>
 #include <helper_string.h>  // helper for shared functions common to CUDA Samples
 // CUDA runtime
@@ -10,20 +9,7 @@
 #include <helper_cuda.h>
 #include <curand_kernel.h>
 
-__global__ void kernelFill(float x, float * mat)
-{
-	mat[threadIdx.x] = x;
-}
-
-/*__global__ void setup_kernel(curandState *state)
-{
-    int id = threadIdx.x + blockIdx.x *;
-    curand_init(1234, id, 0, &state[id]);
-}*/
-
-
-
-class Matrix 
+class DevMatrix 
 {
 	private:
 		int n_row;
@@ -33,14 +19,14 @@ class Matrix
 
 	public:
 		
-		__device__ Matrix() : M(NULL), n_row(0), n_col(0) {;}
-		__device__ Matrix(size_t m, size_t n) {
+		__device__ DevMatrix() : M(NULL), n_row(0), n_col(0) {;}
+		__device__ DevMatrix(size_t m, size_t n) {
 			n_row = m;
 			n_col = n;
 			devStates = new curandState[1];
 			M = new float[m*n];
 		}
-		__device__ ~Matrix()
+		__device__ ~DevMatrix()
 		{
 			n_row=n_col=0;
 			delete[] M;
@@ -52,8 +38,8 @@ class Matrix
 
 		__host__ void fill(float x)
 		{
-			int jobs = n_row*n_col;
-			kernelFill<<<1, jobs>>>(x, getM());
+			//int jobs = n_row*n_col;
+			//kernelFill<<<1, jobs>>>(x, getM());
 		}
 		
 		__host__ __device__ int size() { return n_row*n_col;}
@@ -114,93 +100,121 @@ class Matrix
 	
 };
 
-/*extern "C"
+/* kernel used in random initialization of matrices */
+__global__ void genNorm(unsigned long seed, float *M, float mean = 0, float std = 1)
 {
-	// Level 1
-	void daxpy_(const int *N, const float *ALPHA, const float *X, const int *INCX, float *Y, const int *INCY);
-
-	// Level 2
-	void dgemv_(const char *TRANSA, const int *M, const int *N, const float *ALPHA, const float *A, const int *LDA, const float *X, const int *INCX, const float *BETA, float *Y, const int *INCY);
-	void dsbmv_(const char *UPLO, const int *N, const int *K, const float *ALPHA, const float *A, const int *LDA, const float *X, const int *INCX, const float *BETA, float *Y, const int *INCY);
-	void dger_ (const int *M, const int *N, const float *ALPHA, const float *X, const int *INCX, const float *Y, const int *INCY, float *A, const int *LDA);
-	void dgemm_(const char *TRANSA, const char *TRANSB, const int *M, const int *N, const int *K, const float *ALPHA, const float *A, const int *LDA, const float *B, const int *LDB, const float *BETA, const float *C, const int *LDC);
+	int id = threadIdx.x + blockIdx.x * blockDim.x;
+	//printf("%d\n", id);
+	curandState state;
+	curand_init(seed, id, 0, &state);
+	/* Generate pseudo-random normals */
+	M[id] = curand_normal( &state)*std + mean;
+	//__syncthreads();	
 }
-*/
+
+__device__ void DevMatrix::initialize(unsigned long seed= 1234, float mean = 0, float std = 1)
+{
+	printf("in initialize\n");
+	genNorm<<<1, size()>>>(seed, M, mean, std);
+	cudaDeviceSynchronize();
+}
+
+	/*	CUBLAS INTERFACE 	*/
+
 //y  <--  alpha*x + y
 
-/*void saxpy(const float alpha, const thrust::device_vector<float> &x, const int inc_x, thrust::device_vector<float> &y, const int inc_y)
+__device__ void saxpy(const float alpha, DevMatrix &x, const int inc_x, DevMatrix &y, const int inc_y)
 {
 	const int n = y.size();
-
-	cublasSaxpy(cuHandle::handle, n, &alpha, thrust::raw_pointer_cast(&x[0]), inc_x, thrust::raw_pointer_cast(&y[0]), inc_y);
+	cublasHandle_t hdl;
+ 	cublasStatus_t status = cublasCreate_v2(&hdl);
+	cublasSaxpy(hdl, n, &alpha, x.begin() , inc_x, y.begin(), inc_y);
+	//printf("rf %d info %d\n", status);
+	cublasDestroy_v2(hdl);
 }
-*/
-__device__ void saxpy(float alpha, const float &x, const int inc_x, float &y, const int inc_y)
+
+__device__ void saxpy(float alpha, const float &x, const int inc_x, DevMatrix &y, const int inc_y)
 {
-	const int n = 3;
+	const int n = y.nrow();
 
 	cublasHandle_t hdl;
  	cublasStatus_t status = cublasCreate_v2(&hdl);
-	status = cublasSaxpy(hdl, n, &alpha, &x, inc_x, &y, inc_y);
+	status = cublasSaxpy(hdl, n, &alpha, &x, inc_x, y.begin(), inc_y);
 	//__syncthreads();
  	//printf("rf %d info %d\n", status);
  	cublasDestroy_v2(hdl);
 }
-/*
-void sgemv(cublasOperation_t trans, const float alpha, const Matrix &A, const thrust::device_vector<float> &x, const int inc_x, const float beta, thrust::device_vector<float> &y, const int inc_y)
+
+__device__ void sgemv(cublasOperation_t trans, const float alpha, DevMatrix &A, DevMatrix &x, int inc_x, const float beta, DevMatrix &y, const int inc_y)
 {
 	int M = A.nrow();
 	int N = A.ncol();
 
 	int LDA = A.nrow();
 
-	cublasSgemv(cuHandle::handle, trans, M, N, &alpha, thrust::raw_pointer_cast(&A[0]), LDA, thrust::raw_pointer_cast(&x[0]) , inc_x, &beta, thrust::raw_pointer_cast(&y[0]), inc_y); 
+	cublasHandle_t hdl;
+	cublasStatus_t status = cublasCreate_v2(&hdl);
+	cublasSgemv(hdl, trans, M, N, &alpha, A.begin(), LDA, x.begin(), inc_x, &beta, y.begin(), inc_y); 
+	//printf("rf %d info %d\n", status);
+	cublasDestroy_v2(hdl);
 }
-*//*
-void dgemv(cublasOperation_t trans, const float alpha, const Matrix &A, const float &x, const int inc_x, const float beta, thrust::device_vector<float> &y, const int inc_y)
+
+__device__ void sgemv(cublasOperation_t trans, const float alpha, DevMatrix &A, const float &x, const int inc_x, const float beta, DevMatrix &y, const int inc_y)
 {
 	int M = A.nrow();
 	int N = A.ncol();
 
 	int LDA = A.nrow();
 
-	cublasDgemv(cuHandle::handle, trans, M, N, &alpha, &*A.begin(), LDA, &x, inc_x, &beta, &*y.begin(), inc_y); 
+	cublasHandle_t hdl;
+	cublasStatus_t status = cublasCreate_v2(&hdl);
+	cublasSgemv(hdl, trans, M, N, &alpha, A.begin(), LDA, &x, inc_x, &beta, y.begin(), inc_y); 
+	//printf("rf %d info %d\n", status);
+	cublasDestroy_v2(hdl);
 }
-*/
+
 // k = 1 and LDA = 1 for a diagonal matrix (0 = n_super = n_lower), stored columnwise in a 1 x N vector where N is the number of columns of A
 
-/*void dsbmv(const char UPLO, const float alpha, const Matrix &A, const int K, const thrust::device_vector<float> &x, const int inc_x, const float beta, thrust::device_vector<float> &y, const int inc_y)
+__device__ void ssbmv(cublasFillMode_t uplo, const float alpha, DevMatrix &A, const int K, DevMatrix &x, const int inc_x, const float beta, DevMatrix &y, const int inc_y)
 {
+//cublasFillmode_t literal example CUBLAS_FILL_MODE_LOWER
 	int N = A.nrow();
 	int LDA = 1;
-
-	dsbmv_(&UPLO, &N, &K, &alpha, &*A.thrust::device_vector<float>::begin(), &LDA, &*x.begin(), &inc_x, &beta, &*y.begin(), &inc_y); 
-}*/
+	cublasHandle_t hdl;
+	cublasStatus_t status = cublasCreate_v2(&hdl);
+	cublasSsbmv(hdl, uplo, N, K, &alpha, A.begin(), LDA, x.begin(), inc_x, &beta, y.begin(), inc_y); 
+	//printf("rd %d info %d\n", status);
+	cublasDestroy_v2(hdl);
+}
 
 //A := alpha*x*y**T + A 
-/*
-void dger(const float alpha, const thrust::device_vector<float>  &x, const int inc_x, const float &y, const int inc_y, Matrix &A)
+
+__device__ void sger(const float alpha, DevMatrix &x, const int inc_x, const float &y, const int inc_y, DevMatrix &A)
 {
 	int M  = A.nrow();
 	int N  = A.ncol();
 
 	int LDA = A.nrow();
-
-	cublasDger(cuHandle::handle, M, N, &alpha, &*x.begin(), inc_x, &y, inc_y, &*A.thrust::device_vector<float>::begin(), LDA);
+	cublasHandle_t hdl;
+	cublasStatus_t status = cublasCreate_v2(&hdl);
+	cublasSger(hdl, M, N, &alpha, x.begin(), inc_x, &y, inc_y, A.begin(), LDA);
+	cublasDestroy_v2(hdl);
 }
 
 //A := alpha*x*y**T + A 
-void dger(const float alpha, const thrust::device_vector<float> &x, const int inc_x, const thrust::device_vector<float> &y, const int inc_y, Matrix &A)
+__device__ void sger(const float alpha, DevMatrix  &x, const int inc_x, DevMatrix &y, const int inc_y, DevMatrix &A)
 {
 	int M  = A.nrow();
 	int N  = A.ncol();
 
 	int LDA = A.nrow();
-
-	cublasDger(cuHandle::handle, M, N, &alpha, &*x.begin(), inc_x, &*y.begin(), inc_y, &*A.thrust::device_vector<float>::begin(), LDA);
+	cublasHandle_t hdl;
+	cublasStatus_t status = cublasCreate_v2(&hdl);
+	cublasSger(hdl, M, N, &alpha, x.begin(), inc_x, y.begin(), inc_y, A.begin(), LDA);
+	cublasDestroy_v2(hdl);
 }
-*/
-__device__ void sgemm(cublasOperation_t TrA, cublasOperation_t TrB, float alpha, Matrix &A, Matrix &B, float beta, Matrix &C)
+
+__device__ void sgemm(cublasOperation_t TrA, cublasOperation_t TrB, float alpha, DevMatrix &A, DevMatrix &B, float beta, DevMatrix &C)
 
 {
 	int M;
@@ -265,23 +279,3 @@ __device__ void sgemm(cublasOperation_t TrA, cublasOperation_t TrB, float alpha,
 	cublasDestroy_v2(hdl);
 	
 }
-
-__global__ void generate_normal_kernel(unsigned long seed, float *M, float mean = 0, float std = 1)
-{
-	int id = threadIdx.x + blockIdx.x * blockDim.x;
-	//printf("%d\n", id);
-	/* Copy state to local memory for efficiency */
-	curandState state;
-	curand_init(seed, id, 0, &state);
-	/* Generate pseudo-random normals */
-	M[id] = curand_normal( &state)*std + mean;
-	//__syncthreads();	
-}
-
-__device__ void Matrix::initialize(unsigned long seed= 1234, float mean = 0, float std = 1)
-{
-	printf("in initialize\n");
-	generate_normal_kernel<<<1, size()>>>(seed, M, mean, std);
-	cudaDeviceSynchronize();
-}
-
