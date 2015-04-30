@@ -12,6 +12,7 @@
 #include <stdio.h>
 
 #include "dneuron.h"
+#include <ctime>
 
 __device__ float dtanh (float x) {
 	return (1 - pow(tanh(x), 2));
@@ -31,7 +32,7 @@ __device__ float lgrd(float x)
 	return 1.0;
 }
 
-__global__ void train( Network *net, DevData *dd, float *dX, int  n_row, int n_col, int n_rsp, int n_fea)
+__global__ void train( Network *net, DevData *dd, float *dX, int  n_row, int n_col, int n_rsp, int n_fea, float alpha, int iters)
 {
 	printf("in train kernel\n");
 	for (int i= 0; i< n_row*n_col; i++){
@@ -58,12 +59,15 @@ __global__ void train( Network *net, DevData *dd, float *dX, int  n_row, int n_c
 	net = new Network(dim, 3, &Psi, &L, dd);
 	net->initialize();
 	net->print();
-	net->train(.001, obs, 4, 10000);
+	net->train(alpha, obs, 4,iters);
 	net->print();
 }
 
 int main(int argc, char* argv[])
 {
+	time_t start, end;
+	time(&start);
+	
 	int cuda_device = 0;
     	cuda_device = findCudaDevice(argc, (const char **)argv);
 
@@ -82,11 +86,14 @@ int main(int argc, char* argv[])
 	cudaMalloc(&dd, sizeof(DevData *));
 	cudaMalloc(&net, sizeof(Network *));
 
-	train<<<1,1>>>(net, dd, thrust::raw_pointer_cast(&(d.X[0])), d.nrow(), d.ncol(), d.nrsp(), d.nfea());
+	float alpha = atof(argv[1]);
+	int iters = atoi(argv[2]);
+	train<<<1,1>>>(net, dd, thrust::raw_pointer_cast(&(d.X[0])), d.nrow(), d.ncol(), d.nrsp(), d.nfea(), alpha, iters);
 	cudaDeviceSynchronize();
+	time(&end);
 
-	std::cout << "completed" << std::endl;
-	cudaDeviceReset();
+	printf("Time: %f\n",difftime(end, start));
+	//cudaDeviceReset();
 
 	return 0;
 

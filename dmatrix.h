@@ -123,7 +123,7 @@ __global__ void genNorm(unsigned long seed, float *M, float mean = 0, float std 
 
 __device__ void DevMatrix::initialize(unsigned long seed= 1234, float mean = 0, float std = 1)
 {
-	printf("in initialize\n");
+	//printf("in initialize\n");
 	genNorm<<<1, size()>>>(seed, M, mean, std);
 	cudaDeviceSynchronize();
 }

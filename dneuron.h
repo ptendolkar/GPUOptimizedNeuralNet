@@ -306,10 +306,10 @@ __device__ void Network::print()
 		for( size_t j=0 ; j < n_obs; j++ ){
 			feed_forward( obs_id[j] );
 			backprop( alpha, obs_id[j] );
-//			std::cout << "obs id " << j << std::endl;
+	//		printf("obs id %d\n", j);
 		}
-//		std::cout << "iteration " << i << std::end
-//		this->print();
+	//	printf("iteration %d\n", i); 
+	//	this->print();
 	}	
 };
 
@@ -318,6 +318,7 @@ __device__ void Network::initialize(float mean = 0, float sigma = 1){
 	while(curn_lay_ptr != (Layer *)NULL)
 	{
 		curn_lay_ptr->initialize(mean, sigma);
+		curn_lay_ptr->bias.initialize(mean, sigma);
 		curn_lay_ptr = curn_lay_ptr->prev();
 	}
 };

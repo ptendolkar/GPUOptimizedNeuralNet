@@ -1,1 +1,2 @@
+add-auto-load-safe-path /home/p/pt39/nnet_cuda/.cuda-gdbinit
 b test_main.cu:58
