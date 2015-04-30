@@ -18,5 +18,6 @@ module load cuda
 #module load gsl-gnu4
 #export LD_LIBRARY_PATH=/opt/gsl/1.15/gnu4/lib:$LD_LIBRARY_PATH
 
-$HOME/nnet_cuda/test > output.txt
+read -n1 -r -p "Press any key to continue..." key
+cuda-gdb $HOME/nnet_cuda/test > output.txt
 

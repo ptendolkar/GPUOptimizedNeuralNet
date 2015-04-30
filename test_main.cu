@@ -13,6 +13,24 @@
 
 #include "dneuron.h"
 
+__device__ float dtanh (float x) {
+	return (1 - pow(tanh(x), 2));
+}
+__device__ float  sqloss(float x) {
+	return 0.5*pow(x, 2);
+}
+__device__ float dsqloss(float x) {
+	return x;
+}
+__device__ float lact(float x)
+{
+	return x;
+}
+__device__ float lgrd(float x)
+{
+	return 1.0;
+}
+
 __global__ void train( Network *net, DevData *dd, float *dX, int  n_row, int n_col, int n_rsp, int n_fea)
 {
 	printf("in train kernel\n");
@@ -20,7 +38,28 @@ __global__ void train( Network *net, DevData *dd, float *dX, int  n_row, int n_c
 		printf("%f ", dX[i]);
 	}
 	printf("\n");
+
+	Funct L   ( &sqloss , &dsqloss);
+	Funct Phi ( &lact   , &lgrd);
+	Funct Psi ( &tanh   , &dtanh);
+
 	dd = new DevData(dX, n_row, n_col, n_rsp, n_fea);
+	int dim[3];
+	    dim[0] = 2;
+	    dim[1] = 2;
+	    dim[2] = 1;
+	
+	int obs[4];
+	obs[0] = 2;
+	obs[1] = 0;
+	obs[2] = 1;
+	obs[3] = 3;
+
+	net = new Network(dim, 3, &Psi, &L, dd);
+	net->initialize();
+	net->print();
+	net->train(.001, obs, 4, 10000);
+	net->print();
 }
 
 int main(int argc, char* argv[])

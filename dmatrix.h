@@ -30,6 +30,8 @@ class DevMatrix
 		{
 			n_row=n_col=0;
 			delete[] M;
+			delete devStates;
+			devStates = (curandState *) NULL;
 			M = (float *) NULL;
 		}	
 		
@@ -97,6 +99,13 @@ class DevMatrix
 				}
 			}
 		}
+
+		__device__ void copy(DevMatrix &X){
+			cublasHandle_t hdl;
+ 			cublasStatus_t status = cublasCreate_v2(&hdl);
+			cublasScopy(hdl, X.nrow(), X.getM(), 1, getM(), 1);
+			cublasDestroy_v2(hdl);
+		}	
 	
 };
 

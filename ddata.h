@@ -54,8 +54,8 @@ class Data
 			read(data_file, delim, h_X, n_row, n_col);
 			X = h_X;	
 			
-			thrust::copy(X.begin(),X.end(), std::ostream_iterator<float>(std::cout, " "));
-			std::cout << std::endl;
+//			thrust::copy(X.begin(),X.end(), std::ostream_iterator<float>(std::cout, " "));
+//			std::cout << std::endl;
 
 			n_rsp = d;
 			n_fea = n_col - n_rsp;
