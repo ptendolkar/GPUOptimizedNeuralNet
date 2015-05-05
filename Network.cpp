@@ -126,7 +126,8 @@
 	}
 
 	//DevMatrix *past_del_ptr = curn_del_ptr;
-	del_past = del_curr;
+	del_past->n_row = del_curr->n_row;
+	del_past->copy(*del_curr, handle);
 	//curn_del_ptr = NULL;
 
 	curn_lay_ptr = curn_lay_ptr->prev();
@@ -134,6 +135,7 @@
 	while( curn_lay_ptr != (Layer *)NULL)
 	{
 		//curn_del_ptr = new DevMatrix(curn_lay_ptr->nrow(), 1);
+
 		del_curr->n_row = curn_lay_ptr->nrow();
 
 		//BP 2
@@ -222,10 +224,25 @@ __device__ void Network::print()
 
 __device__ void Network::initialize(unsigned long seed= 1234, float mean = 0, float sigma = 1){
 	Layer *curn_lay_ptr = tail_lay_ptr;
-	while(curn_lay_ptr != (Layer *)NULL)
+/*	while(curn_lay_ptr != (Layer *)NULL)
 	{
 		curn_lay_ptr->initialize(seed, mean, sigma);
 		curn_lay_ptr->bias.initialize(seed,mean, sigma);
 		curn_lay_ptr = curn_lay_ptr->prev();
-	}
+	}*/
+		
+	curn_lay_ptr->write(0,0,-0.01053);
+	curn_lay_ptr->write(1,0, 1.15726);
+	
+	curn_lay_ptr->bias.write(0,0,-0.01053);
+
+	curn_lay_ptr = curn_lay_ptr->prev();
+
+	curn_lay_ptr->write(0,0,-0.01053);
+	curn_lay_ptr->write(1,0, 1.15726);
+	curn_lay_ptr->write(0,1, 2.03946);
+	curn_lay_ptr->write(1,1, 0.67350);
+
+	curn_lay_ptr->bias.write(0,0, -0.01053);
+	curn_lay_ptr->bias.write(1,0, 1.15726);	
 };

@@ -28,12 +28,6 @@ __device__ float lgrd(float x)
 
 __global__ void train( Network *net, DevData *dd, cublasHandle_t *hdl, float *dX, int  n_row, int n_col, int n_rsp, int n_fea, float alpha, int iters)
 {
-	printf("in train kernel\n");
-	for (int i= 0; i< n_row*n_col; i++){
-		printf("%f ", dX[i]);
-	}
-	printf("\n");
-
 	Funct L   ( &sqloss , &dsqloss);
 	Funct Phi ( &lact   , &lgrd);
 	Funct Psi ( &tanhf   , &dtanh);
@@ -55,15 +49,19 @@ __global__ void train( Network *net, DevData *dd, cublasHandle_t *hdl, float *dX
 	}	
 
 	int *obs = new int[n_row];
+	printf("Number of rows: %d\n", n_row);
 	for(int i=0; i < n_row; i++)
+	{
 		obs[i] = i;	
+	}
 
 	cublasCreate_v2(hdl);
 	net = new Network(dim, 3, &Psi, &L, dd, hdl, maxDimen);
-	net->initialize( 1234, 0, 1);
+	net->initialize( 4891, 0, 1);
 	net->print();
-	net->train(alpha, obs, 4, iters);
+	net->train(alpha, obs, n_row, iters);
 	cublasDestroy_v2(*hdl);
+	cudaDeviceSynchronize();
 	net->print();
 }
 
@@ -72,11 +70,11 @@ int main(int argc, char* argv[])
 	time_t start, end;
 	time(&start);
 	
-	cudaDeviceSetLimit(cudaLimitMallocHeapSize, 512 * (1 << 20));
+	//cudaDeviceSetLimit(cudaLimitMallocHeapSize, 512 * (1 << 20));
 	
 	std::cout << "before allocation" << std::endl;
 
-	Data d("data.csv", ',', 1);
+	Data d("data.csv", ',',  1);
 	DevData *dd;
 	Network *net;
 	cublasHandle_t *hdl;
@@ -87,12 +85,14 @@ int main(int argc, char* argv[])
 
 	float alpha = atof(argv[1]);
 	int iters = atoi(argv[2]);
+
+	printf("Alpha: %f, Iterations: %d, Responses: %d, Columns %d\n", alpha, iters);
 	train<<<1,1>>>(net, dd, hdl, thrust::raw_pointer_cast(&(d.X[0])), d.nrow(), d.ncol(), d.nrsp(), d.nfea(), alpha, iters);
 	cudaDeviceSynchronize();
 	time(&end);
 
 	printf("Time: %f\n",difftime(end, start));
-	//cudaDeviceReset();
+	cudaDeviceReset();
 
 	return 0;
 
