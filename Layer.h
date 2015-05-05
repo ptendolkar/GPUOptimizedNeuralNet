@@ -1,4 +1,5 @@
 #pragma once
+#include "Layer.h"
 #include "Funct.h"
 #include "DevMatrix.h"
 #include "DevData.h"
@@ -11,7 +12,7 @@ class Layer : public DevMatrix
 		Layer *prev_lay_ptr;
 		Layer *next_lay_ptr;
 		Funct **potn;
-	
+		cublasHandle_t *handle;	
 	public:
 		DevMatrix bias;
 		DevMatrix flux;
@@ -20,7 +21,7 @@ class Layer : public DevMatrix
 		__device__ Layer();
 		__device__ Layer(size_t, size_t, size_t);
 		__device__ Layer(size_t, size_t, size_t, Layer *, Layer *);
-		__device__ Layer(size_t, size_t, size_t, Layer *, Layer *, Funct *);
+		__device__ Layer(size_t, size_t, size_t, Layer *, Layer *, Funct *, cublasHandle_t * hdl);
 
 		__device__ size_t id();
 		__device__ Layer * prev();

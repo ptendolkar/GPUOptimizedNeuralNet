@@ -4,14 +4,15 @@
 #include "DevData.h"
 #include "DevMatrix.h"
 
-class Network : public Layer
+class Network 
 {
 	private:
-		size_t n_lay;
-		Layer  *head_lay_ptr;
-		Layer  *tail_lay_ptr;
-		Funct  *loss;
-		DevData   *data_ptr;
+		size_t           n_lay;
+		Layer            *head_lay_ptr;
+		Layer            *tail_lay_ptr;
+		Funct            *loss;
+		DevData          *data_ptr;
+		cublasHandle_t   *handle;
 
 	public:
 
@@ -20,7 +21,7 @@ class Network : public Layer
 // Build network dynamically fowards (head to tail) from the output layer.  Single layer network (e.g. logistic regression) will have NULL input layer pointer,
 // but all networks must have an output.  The first entry of the dimension array is the size of the covariate space, and the last entry is the size of the output space.
 
-		 __device__ Network(int *, int, Funct *, Funct *, DevData *);
+		 __device__ Network(int *, int, Funct *, Funct *, DevData *, cublasHandle_t *);
 
 		 __device__ size_t depth(); 
 		 __device__ Layer  *head();

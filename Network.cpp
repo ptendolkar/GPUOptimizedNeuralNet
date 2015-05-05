@@ -5,8 +5,9 @@
 // Build network dynamically fowards (head to tail) from the output layer.  Single layer network (e.g. logistic regression) will have NULL input layer pointer,
 // but all networks must have an output.  The first entry of the dimension array is the size of the covariate space, and the last entry is the size of the output space.
 
- __device__ Network::Network(int *dim_lay, int dim_size, Funct *f, Funct *l, DevData *train)
+ __device__ Network::Network(int *dim_lay, int dim_size, Funct *f, Funct *l, DevData *train, cublasHandle_t *hdl)
 {
+	handle = hdl;
 	loss = l;
 	data_ptr = train; 
 
@@ -21,14 +22,14 @@
 
 	n_lay = dim_size - 1;
 
-	Layer *curn_lay_ptr = new Layer(0, dim_lay[1], dim_lay[0], (Layer *)NULL, (Layer *)NULL, f);
+	Layer *curn_lay_ptr = new Layer(0, dim_lay[1], dim_lay[0], (Layer *)NULL, (Layer *)NULL, f, handle);
 	Layer *prev_lay_ptr = curn_lay_ptr;
 
 	head_lay_ptr = curn_lay_ptr;
 
 	for (int i=1; i< n_lay; i++)
 	{
-		curn_lay_ptr = new Layer(i, dim_lay[i+1], dim_lay[i], prev_lay_ptr, (Layer *)NULL, f);
+		curn_lay_ptr = new Layer(i, dim_lay[i+1], dim_lay[i], prev_lay_ptr, (Layer *)NULL, f, handle);
 		curn_lay_ptr->prev()->next(curn_lay_ptr);
 		prev_lay_ptr = curn_lay_ptr;
 	}
@@ -104,13 +105,13 @@
 	}
 
 	//BP 3
-	saxpy(-alpha, *curn_del_ptr, 1, curn_lay_ptr->bias, 1);
+	saxpy(handle,-alpha, *curn_del_ptr, 1, curn_lay_ptr->bias, 1);
 	
 	//BP 4
 	if(head_lay_ptr != tail_lay_ptr)
-		sger (-alpha, *curn_del_ptr, 1, curn_lay_ptr->prev()->actv, 1, *(curn_lay_ptr)); 
+		sger (handle,-alpha, *curn_del_ptr, 1, curn_lay_ptr->prev()->actv, 1, *(curn_lay_ptr)); 
 	else
-		sger(-alpha, *curn_del_ptr, 1, *(data_ptr->feat(obs_id)), 1, *(curn_lay_ptr));
+		sger(handle, -alpha, *curn_del_ptr, 1, *(data_ptr->feat(obs_id)), 1, *(curn_lay_ptr));
 
 	DevMatrix *past_del_ptr = curn_del_ptr;
 	curn_del_ptr = NULL;
@@ -122,7 +123,7 @@
 		curn_del_ptr = new DevMatrix(curn_lay_ptr->nrow(), 1);
 
 		//BP 2
-		sgemv(CUBLAS_OP_T, 1.0, *(curn_lay_ptr->next()), *past_del_ptr, 1, 0.0, *curn_del_ptr, 1); 
+		sgemv(handle, CUBLAS_OP_T, 1.0, *(curn_lay_ptr->next()), *past_del_ptr, 1, 0.0, *curn_del_ptr, 1); 
 
 		for (int i=0; i<curn_lay_ptr->nrow(); i++)
 		{
@@ -131,17 +132,17 @@
 		}
 
 		//BP 3
-		saxpy(-alpha, *curn_del_ptr, 1, curn_lay_ptr->bias, 1);
+		saxpy(handle,-alpha, *curn_del_ptr, 1, curn_lay_ptr->bias, 1);
 	
 		//BP 4
 		
 		if(curn_lay_ptr != head_lay_ptr)
 		{
-			sger(-alpha, *curn_del_ptr, 1, curn_lay_ptr->prev()->actv, 1, *(curn_lay_ptr));
+			sger(handle,-alpha, *curn_del_ptr, 1, curn_lay_ptr->prev()->actv, 1, *(curn_lay_ptr));
 		}
 		else
 		{
-			sger(-alpha,  *curn_del_ptr, 1, *(data_ptr->feat(obs_id)), 1,*(curn_lay_ptr)); 
+			sger(handle,-alpha,  *curn_del_ptr, 1, *(data_ptr->feat(obs_id)), 1,*(curn_lay_ptr)); 
 		}
 
 		delete past_del_ptr;	

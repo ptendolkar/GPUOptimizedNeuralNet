@@ -2,10 +2,11 @@
 
 __device__ Layer::Layer(size_t i, size_t m, size_t n) : DevMatrix(m,n), iden(i), prev_lay_ptr((Layer *)NULL), next_lay_ptr((Layer *)NULL), bias(m,1), flux(m,1), actv(m,1), potn(){};
 __device__ Layer::Layer(size_t i, size_t m, size_t n, Layer *ipp, Layer *inn) : DevMatrix(m,n), iden(i), prev_lay_ptr(ipp), next_lay_ptr(inn), bias(m,1), flux(m,1), actv(m,1), potn() {}
-__device__ Layer::Layer(size_t i, size_t m, size_t n, Layer *ipp, Layer *inn, Funct *f) : DevMatrix(m,n), iden(i), prev_lay_ptr(ipp), next_lay_ptr(inn), bias(m,1), flux(m,1), actv(m,1)
+__device__ Layer::Layer(size_t i, size_t m, size_t n, Layer *ipp, Layer *inn, Funct *f, cublasHandle_t *hdl) : DevMatrix(m,n), iden(i), prev_lay_ptr(ipp), next_lay_ptr(inn), bias(m,1), flux(m,1), actv(m,1)
 {
 	potn = new Funct *[1];
 	potn[0] = f;
+	handle = hdl;
 }
 __device__ size_t Layer::id()   { return iden; }
 __device__ Layer* Layer::prev() { return prev_lay_ptr; }
@@ -37,16 +38,16 @@ __device__ Layer::~Layer()
 
 __device__ void Layer::push(size_t obs_id, DevData *data_ptr)
 {
-        flux.copy(bias);
+        flux.copy(bias, handle);
 
         if (prev() != (Layer *)NULL)
         {
 
-                sgemv(CUBLAS_OP_N, 1.0, *this, prev()->actv, 1, 1.0, flux, 1);
+                sgemv(handle, CUBLAS_OP_N, 1.0, *this, prev()->actv, 1, 1.0, flux, 1);
         }
         else
         {
-                sgemv(CUBLAS_OP_N, 1.0, *this,(*data_ptr->feat(obs_id)), 1, 1.0, flux, 1);
+                sgemv(handle, CUBLAS_OP_N, 1.0, *this,(*data_ptr->feat(obs_id)), 1, 1.0, flux, 1);
         }
 
         for (int i=0; i<flux.size(); i++)
