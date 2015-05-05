@@ -8,13 +8,13 @@
 class DevMatrix
 {
 	private:
-                int n_row;
-                int n_col;
+                
                 float* M;
                 curandState *devStates;
 
         public:
-
+		int n_row;
+                int n_col;
                 __device__ DevMatrix(); 
                 __device__ DevMatrix(size_t, size_t );
                 __device__ ~DevMatrix();

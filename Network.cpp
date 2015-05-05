@@ -5,8 +5,10 @@
 // Build network dynamically fowards (head to tail) from the output layer.  Single layer network (e.g. logistic regression) will have NULL input layer pointer,
 // but all networks must have an output.  The first entry of the dimension array is the size of the covariate space, and the last entry is the size of the output space.
 
- __device__ Network::Network(int *dim_lay, int dim_size, Funct *f, Funct *l, DevData *train, cublasHandle_t *hdl)
+ __device__ Network::Network(int *dim_lay, int dim_size, Funct *f, Funct *l, DevData *train, cublasHandle_t *hdl, int maxDimen)
 {
+	del_curr = new DevMatrix(maxDimen, 1);
+	del_past = new DevMatrix(maxDimen, 1);
 	handle = hdl;
 	loss = l;
 	data_ptr = train; 
@@ -89,7 +91,8 @@
  __device__ void Network::backprop(float alpha, size_t obs_id)
 {
 	Layer *curn_lay_ptr = tail_lay_ptr;
-	DevMatrix *curn_del_ptr = new DevMatrix(curn_lay_ptr->nrow(), 1);
+	//DevMatrix *curn_del_ptr = new DevMatrix(curn_lay_ptr->nrow(), 1);
+	del_curr->n_row = curn_lay_ptr->nrow();
 
 	float curn_flx;
 	float curn_act;
@@ -100,62 +103,79 @@
 		curn_flx = (curn_lay_ptr->z())[i];
 		curn_act = (curn_lay_ptr->a())[i];
 		curn_obs = *(data_ptr->resp(obs_id) + i*data_ptr->nrow());
-		(curn_del_ptr->getM())[i]  = curn_lay_ptr->eval_g(curn_flx);
-		(curn_del_ptr->getM())[i] *= (*loss->get_grd())(curn_act - curn_obs);
+		//(curn_del_ptr->getM())[i]  = curn_lay_ptr->eval_g(curn_flx);
+		//(curn_del_ptr->getM())[i] *= (*loss->get_grd())(curn_act - curn_obs);
+		(del_curr->getM())[i]  = curn_lay_ptr->eval_g(curn_flx);
+		(del_curr->getM())[i] *= (*loss->get_grd())(curn_act - curn_obs);
 	}
 
 	//BP 3
-	saxpy(handle,-alpha, *curn_del_ptr, 1, curn_lay_ptr->bias, 1);
+	//saxpy(handle,-alpha, *curn_del_ptr, 1, curn_lay_ptr->bias, 1);
+	saxpy(handle, -alpha, *del_curr, 1, curn_lay_ptr->bias, 1);
 	
 	//BP 4
 	if(head_lay_ptr != tail_lay_ptr)
-		sger (handle,-alpha, *curn_del_ptr, 1, curn_lay_ptr->prev()->actv, 1, *(curn_lay_ptr)); 
+	{
+		//sger (handle,-alpha, *curn_del_ptr, 1, curn_lay_ptr->prev()->actv, 1, *(curn_lay_ptr)); 
+		sger (handle,-alpha, *del_curr, 1, curn_lay_ptr->prev()->actv, 1, *(curn_lay_ptr)); 
+	}
 	else
-		sger(handle, -alpha, *curn_del_ptr, 1, *(data_ptr->feat(obs_id)), 1, *(curn_lay_ptr));
+	{
+		//sger(handle, -alpha, *curn_del_ptr, 1, *(data_ptr->feat(obs_id)), 1, *(curn_lay_ptr));
+		sger(handle, -alpha, *del_curr, 1, *(data_ptr->feat(obs_id)), 1, *(curn_lay_ptr));
+	}
 
-	DevMatrix *past_del_ptr = curn_del_ptr;
-	curn_del_ptr = NULL;
+	//DevMatrix *past_del_ptr = curn_del_ptr;
+	del_past = del_curr;
+	//curn_del_ptr = NULL;
 
 	curn_lay_ptr = curn_lay_ptr->prev();
 
 	while( curn_lay_ptr != (Layer *)NULL)
 	{
-		curn_del_ptr = new DevMatrix(curn_lay_ptr->nrow(), 1);
+		//curn_del_ptr = new DevMatrix(curn_lay_ptr->nrow(), 1);
+		del_curr->n_row = curn_lay_ptr->nrow();
 
 		//BP 2
-		sgemv(handle, CUBLAS_OP_T, 1.0, *(curn_lay_ptr->next()), *past_del_ptr, 1, 0.0, *curn_del_ptr, 1); 
+		//sgemv(handle, CUBLAS_OP_T, 1.0, *(curn_lay_ptr->next()), *past_del_ptr, 1, 0.0, *curn_del_ptr, 1); 
+		sgemv(handle, CUBLAS_OP_T, 1.0, *(curn_lay_ptr->next()), *del_past, 1, 0.0, *del_curr, 1); 
 
 		for (int i=0; i<curn_lay_ptr->nrow(); i++)
 		{
 			curn_flx = (curn_lay_ptr->z())[i];
-			(curn_del_ptr->getM())[i] *= curn_lay_ptr->eval_g(curn_flx);
+			//(curn_del_ptr->getM())[i] *= curn_lay_ptr->eval_g(curn_flx);
+			(del_curr->getM())[i] *= curn_lay_ptr->eval_g(curn_flx);
 		}
 
 		//BP 3
-		saxpy(handle,-alpha, *curn_del_ptr, 1, curn_lay_ptr->bias, 1);
+		//saxpy(handle,-alpha, *curn_del_ptr, 1, curn_lay_ptr->bias, 1);
+		saxpy(handle,-alpha, *del_curr, 1, curn_lay_ptr->bias, 1);
 	
 		//BP 4
 		
 		if(curn_lay_ptr != head_lay_ptr)
 		{
-			sger(handle,-alpha, *curn_del_ptr, 1, curn_lay_ptr->prev()->actv, 1, *(curn_lay_ptr));
+			//sger(handle,-alpha, *curn_del_ptr, 1, curn_lay_ptr->prev()->actv, 1, *(curn_lay_ptr));
+			sger(handle,-alpha, *del_curr, 1, curn_lay_ptr->prev()->actv, 1, *(curn_lay_ptr));
 		}
 		else
 		{
-			sger(handle,-alpha,  *curn_del_ptr, 1, *(data_ptr->feat(obs_id)), 1,*(curn_lay_ptr)); 
+			//sger(handle,-alpha,  *curn_del_ptr, 1, *(data_ptr->feat(obs_id)), 1,*(curn_lay_ptr)); 
+			sger(handle,-alpha,  *del_curr, 1, *(data_ptr->feat(obs_id)), 1,*(curn_lay_ptr)); 
 		}
 
-		delete past_del_ptr;	
-		past_del_ptr = NULL;
-		past_del_ptr = curn_del_ptr;
-		curn_del_ptr = NULL;
+		//delete past_del_ptr;	
+		//past_del_ptr = NULL;
+		//past_del_ptr = curn_del_ptr;
+		//curn_del_ptr = NULL;
+		
 		
 		curn_lay_ptr = curn_lay_ptr->prev();
 	}
 
-	past_del_ptr = NULL;
-	delete curn_del_ptr;
-	curn_del_ptr = NULL;
+	//past_del_ptr = NULL;
+	//delete curn_del_ptr;
+	//curn_del_ptr = NULL;
 	//delete past_del_ptr;
 	//past_del_ptr = curn_del_ptr = (DevMatrix *)NULL;
 }

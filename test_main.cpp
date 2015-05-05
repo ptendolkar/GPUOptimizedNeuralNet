@@ -39,17 +39,27 @@ __global__ void train( Network *net, DevData *dd, cublasHandle_t *hdl, float *dX
 	Funct Psi ( &tanhf   , &dtanh);
 
 	dd = new DevData(dX, n_row, n_col, n_rsp, n_fea);
+	int num_lay = 3;
 	int dim[3];
 	    dim[0] = n_fea;
 	    dim[1] = 15;
 	    dim[2] = 1;
+
+	int maxDimen = dim[0];
+	for(int i = 1; i < num_lay; i++)
+	{
+		if(maxDimen < dim[i])
+		{
+			maxDimen = dim[i];
+		}
+	}	
 
 	int *obs = new int[n_row];
 	for(int i=0; i < n_row; i++)
 		obs[i] = i;	
 
 	cublasCreate_v2(hdl);
-	net = new Network(dim, 3, &Psi, &L, dd, hdl);
+	net = new Network(dim, 3, &Psi, &L, dd, hdl, maxDimen);
 	net->initialize( 1234, 0, 1);
 	net->print();
 	net->train(alpha, obs, 4, iters);

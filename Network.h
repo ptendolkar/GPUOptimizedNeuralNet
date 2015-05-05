@@ -14,6 +14,9 @@ class Network
 		DevData          *data_ptr;
 		cublasHandle_t   *handle;
 
+		DevMatrix *del_curr;
+		DevMatrix *del_past;
+
 	public:
 
 		 __device__ Network(); 
@@ -21,7 +24,7 @@ class Network
 // Build network dynamically fowards (head to tail) from the output layer.  Single layer network (e.g. logistic regression) will have NULL input layer pointer,
 // but all networks must have an output.  The first entry of the dimension array is the size of the covariate space, and the last entry is the size of the output space.
 
-		 __device__ Network(int *, int, Funct *, Funct *, DevData *, cublasHandle_t *);
+		 __device__ Network(int *, int, Funct *, Funct *, DevData *, cublasHandle_t *, int);
 
 		 __device__ size_t depth(); 
 		 __device__ Layer  *head();

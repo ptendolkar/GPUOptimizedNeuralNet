@@ -17,6 +17,7 @@ module load cuda
 export CUDA_VISIBLE_DEVICES="1" 
 
 #module load gsl-gnu4
+#export LD_LIBRARY_PATH=/opt/gsl/1.15/gnu4/lib:$LD_LIBRARY_PATH
 
-./test_gpu .2 1000 > output.txt
+./test_gpu .2 10000 > output.txt
 
