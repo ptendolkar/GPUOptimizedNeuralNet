@@ -47,6 +47,7 @@ __global__ void train( Network *net, DevData *dd, cublasHandle_t *hdl, float *dX
 			maxDimen = dim[i];
 		}
 	}	
+	printf("max dimen %d\n", maxDimen);
 
 	int *obs = new int[n_row];
 	printf("Number of rows: %d\n", n_row);
@@ -58,11 +59,11 @@ __global__ void train( Network *net, DevData *dd, cublasHandle_t *hdl, float *dX
 	cublasCreate_v2(hdl);
 	net = new Network(dim, 3, &Psi, &L, dd, hdl, maxDimen);
 	net->initialize( 4891, 0, 1);
-	net->print();
+//	net->print();
 	net->train(alpha, obs, n_row, iters);
 	cublasDestroy_v2(*hdl);
 	cudaDeviceSynchronize();
-	net->print();
+//	net->print();
 }
 
 int main(int argc, char* argv[])
@@ -86,7 +87,7 @@ int main(int argc, char* argv[])
 	float alpha = atof(argv[1]);
 	int iters = atoi(argv[2]);
 
-	printf("Alpha: %f, Iterations: %d, Responses: %d, Columns %d\n", alpha, iters);
+	printf("Alpha: %f, Iterations: %d, Responses: %d, Columns %d\n", alpha, iters, d.nrsp(), d.ncol());
 	train<<<1,1>>>(net, dd, hdl, thrust::raw_pointer_cast(&(d.X[0])), d.nrow(), d.ncol(), d.nrsp(), d.nfea(), alpha, iters);
 	cudaDeviceSynchronize();
 	time(&end);

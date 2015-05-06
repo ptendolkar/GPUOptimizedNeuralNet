@@ -224,14 +224,14 @@ __device__ void Network::print()
 
 __device__ void Network::initialize(unsigned long seed= 1234, float mean = 0, float sigma = 1){
 	Layer *curn_lay_ptr = tail_lay_ptr;
-/*	while(curn_lay_ptr != (Layer *)NULL)
+	while(curn_lay_ptr != (Layer *)NULL)
 	{
 		curn_lay_ptr->initialize(seed, mean, sigma);
 		curn_lay_ptr->bias.initialize(seed,mean, sigma);
 		curn_lay_ptr = curn_lay_ptr->prev();
-	}*/
+	}
 		
-	curn_lay_ptr->write(0,0,-0.01053);
+/*	curn_lay_ptr->write(0,0,-0.01053);
 	curn_lay_ptr->write(1,0, 1.15726);
 	
 	curn_lay_ptr->bias.write(0,0,-0.01053);
@@ -244,5 +244,5 @@ __device__ void Network::initialize(unsigned long seed= 1234, float mean = 0, fl
 	curn_lay_ptr->write(1,1, 0.67350);
 
 	curn_lay_ptr->bias.write(0,0, -0.01053);
-	curn_lay_ptr->bias.write(1,0, 1.15726);	
+	curn_lay_ptr->bias.write(1,0, 1.15726);	*/
 };
