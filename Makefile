@@ -7,12 +7,13 @@ GSL := /opt/gsl/1.15/gnu4
 # 
 program_CXX_SRCS := example_xor.cpp
 program_CXX_SRCS += $(wildcard src/*.cpp)
-program_CXX_INCS := $(wildcar inc/*.h)
+program_CXX_INCS := $(wildcard inc/*.h)
 program_CXX_OBJS := ${program_CXX_SRCS:.cpp=.o}
 program_INCLUDE_DIRS := $(OPENBLAS)/include $(GSL)/include inc
 program_LIBRARY_DIRS := $(OPENBLAS)/lib $(GSL)/lib
 program_LIBRARIES := openblas gsl gslcblas rt
 
+CXXFLAGS := -g
 CPPFLAGS += $(foreach includedir,$(program_INCLUDE_DIRS),-I$(includedir))
 LDFLAGS += $(foreach librarydir,$(program_LIBRARY_DIRS),-L$(librarydir))
 LDFLAGS += $(foreach library,$(program_LIBRARIES),-l$(library))
@@ -24,9 +25,8 @@ all: $(program_NAME)
 $(program_NAME): $(program_CXX_OBJS)
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) $(program_CXX_OBJS) -o $(program_NAME)
 
-%.o: %.cpp 
+%.o: %.cpp $(program_CXX_INCS) 
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) -c $< -o $@
-	@echo "~~~~~~~~~~~~~~~~~~~"
 
 clean:
 	@- $(RM) $(program_NAME)
