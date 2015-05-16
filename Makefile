@@ -1,12 +1,33 @@
-CXX = g++
-OPENBLAS = /opt/openblas/0.2.3/gnu4/Opteron
-TARGET1 = test_serial.o
-GSL = /opt/gsl/1.15/gnu4/
-all : $(TARGET1)
+program_NAME := test_serial
 
-$(TARGET1) : test_main.cpp
-	$(CXX) -o $(TARGET1) test_main.cpp -g -I$(OPENBLAS)/include -I$(GSL)/include -L$(GSL)/lib -L$(OPENBLAS)/lib -Wl,-rpath=$(OPENBLAS)/lib -lopenblas -lgsl -lgslcblas -lrt
+# Paths to neccesary libraries
+OPENBLAS := /opt/openblas/0.2.3/gnu4/Opteron
+GSL := /opt/gsl/1.15/gnu4
 
+# 
+program_CXX_SRCS := example_xor.cpp
+program_CXX_SRCS += $(wildcard src/*.cpp)
+program_CXX_INCS := $(wildcar inc/*.h)
+program_CXX_OBJS := ${program_CXX_SRCS:.cpp=.o}
+program_INCLUDE_DIRS := $(OPENBLAS)/include $(GSL)/include inc
+program_LIBRARY_DIRS := $(OPENBLAS)/lib $(GSL)/lib
+program_LIBRARIES := openblas gsl gslcblas rt
 
-clean :
-	-rm -f *.o
+CPPFLAGS += $(foreach includedir,$(program_INCLUDE_DIRS),-I$(includedir))
+LDFLAGS += $(foreach librarydir,$(program_LIBRARY_DIRS),-L$(librarydir))
+LDFLAGS += $(foreach library,$(program_LIBRARIES),-l$(library))
+
+.PHONY: all clean
+
+all: $(program_NAME)
+
+$(program_NAME): $(program_CXX_OBJS)
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) $(program_CXX_OBJS) -o $(program_NAME)
+
+%.o: %.cpp 
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) -c $< -o $@
+	@echo "~~~~~~~~~~~~~~~~~~~"
+
+clean:
+	@- $(RM) $(program_NAME)
+	@- $(RM) $(program_CXX_OBJS)

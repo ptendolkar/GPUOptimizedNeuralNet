@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include <stdint.h> //for uint apparently
-#include "neuron.h"
+#include <stdint.h>
+#include <Network.h>
 #include <cmath>
 #include <ctime>
 
@@ -36,36 +36,39 @@ int main(int argc, char* argv[])
 	struct timespec start, end;
 
 	clock_gettime(CLOCK_MONOTONIC, &start); /* mark start time */
-	Data d("data.csv", ',', 1);
 
+	/* Load the XOR data set */
+	Data d("data/training", ' ', 1);
+	
+	/* Define a 2x2x2 hidden layer using a vector */
 	std::vector<size_t> dim(3);
 	dim[0] = d.nfea();
-	dim[1] = 15;
+	dim[1] = 2;
 	dim[2] = 1;
 
+	/* Reference the loss and activation functions made above */
 	Funct L(&sqloss, &dsqloss);
-	Funct Phi(&lact, &lgrd);
 	Funct Psi(&tanh, &dtanh);
 
 	Network net(dim, &Psi, &L, &d);
 	
+	/* State which observations you want to train on */
 	int nobs =4;
 	std::vector<size_t> obs(nobs);
-
 	for(int i =0 ; i< obs.size(); i++)
 	{
 		obs[i] = i;
 	}
 
-	double a = atof(argv[1]);
-	int n = atoi(argv[2]);
-	
-	net.initialize(1234);
+	double a = atof(argv[1]); /* learning rate */
+	int    n = atoi(argv[2]);    /* number of iterations */
+
+	net.initialize(1234L, 0.0, 1.0);
 	net.print();
 	net.train(a, obs, n);
 	net.print();
 
-	clock_gettime(CLOCK_MONOTONIC, &end); /* mark start time */
+	clock_gettime(CLOCK_MONOTONIC, &end); /* mark end time */
 	diff = BILLION * (end.tv_sec - start.tv_sec) + end.tv_nsec - start.tv_nsec;
 	printf("Seconds: %f\n", diff/1000000000.0);
 
