@@ -2,9 +2,9 @@
 This repository contains a C++ library for building artificial neural networks with optional regularizers using the standard backprogogation algorithm.
 
 # Branch Details
-* Master --> Serial version
+* master --> serial version
 * gpu_version--> GPU version
-* Other branches --> for testing purposes only
+* other branches --> for testing purposes only
 
 # Building
 Running make in either branch produces the binary on example datasets (either XOR or BREAST_CANCER).
