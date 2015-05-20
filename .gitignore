@@ -7,4 +7,6 @@ core.*
 layer-*
 .RData
 .Rhistory
+.cuda-gdbinit
+test_gpu
 output.txt
