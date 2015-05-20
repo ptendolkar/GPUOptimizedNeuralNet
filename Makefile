@@ -23,10 +23,10 @@ LDFLAGS += $(foreach library,$(program_LIBRARIES),-l$(library))
 all: $(program_NAME)
 
 $(program_NAME): $(program_CXX_OBJS)
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) $(program_CXX_OBJS) -o $(program_NAME)
+	$(LINK.cc) $(program_CXX_OBJS) -o $(program_NAME)
 
 %.o: %.cpp $(program_CXX_INCS) 
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) -c $< -o $@
+	$(LINK.cc) -c $< -o $@
 
 clean:
 	@- $(RM) $(program_NAME)
