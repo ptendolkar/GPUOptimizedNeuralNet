@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
 	clock_gettime(CLOCK_MONOTONIC, &start); /* mark start time */
 
 	/* Load the XOR data set */
-	Data d("data/training", ' ', 1);
+	Data d("data/train/training", ' ', 1);
 	
 	/* Define a 2x2x2 hidden layer using a vector */
 	std::vector<size_t> dim(3);
