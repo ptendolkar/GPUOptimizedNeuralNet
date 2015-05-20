@@ -5,3 +5,6 @@ core.*
 *.swp
 *~
 layer-*
+.RData
+.Rhistory
+output.txt

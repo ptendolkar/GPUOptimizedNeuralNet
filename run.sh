@@ -14,7 +14,6 @@
 
 . /opt/modules/init/bash
 module load cuda
-export CUDA_VISIBLE_DEVICES="1" 
 
 #module load gsl-gnu4
 

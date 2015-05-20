@@ -1,9 +1,9 @@
-#include "cublas_interface.h"
+#pragma once
+#include "Layer.h"
 #include "Funct.h"
 #include "DevMatrix.h"
 #include "DevData.h"
 
-#pragma once
 
 class Layer : public DevMatrix
 {
@@ -11,16 +11,18 @@ class Layer : public DevMatrix
 		size_t iden;
 		Layer *prev_lay_ptr;
 		Layer *next_lay_ptr;
-
+		Funct **potn;
 	public:
 		DevMatrix bias;
 		DevMatrix flux;
 		DevMatrix actv;
 
+		cublasHandle_t *handle;	
+
 		__device__ Layer();
 		__device__ Layer(size_t, size_t, size_t);
 		__device__ Layer(size_t, size_t, size_t, Layer *, Layer *);
-		__device__ Layer(size_t, size_t, size_t, Layer *, Layer *, Funct *);
+		__device__ Layer(size_t, size_t, size_t, Layer *, Layer *, Funct *, cublasHandle_t * hdl);
 
 		__device__ size_t id();
 		__device__ Layer * prev();

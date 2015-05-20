@@ -1,6 +1,6 @@
+#pragma once
 #include "Data.h"
 
-#pragma once
 
 class DevData
 {

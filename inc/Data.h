@@ -1,10 +1,10 @@
+#pragma once
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #include <string>
 #include <sstream>
 #include <fstream>
 
-#pragma once
 
 void read(std::string, char, thrust::host_vector<float> &, int &, int &);
 

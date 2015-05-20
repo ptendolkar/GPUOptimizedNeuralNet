@@ -1,18 +1,22 @@
+#pragma once 
 #include "Layer.h"
 #include "Funct.h"
 #include "DevData.h"
-#include "cublas_interface.h"
+#include "DevMatrix.h"
 
-#pragma once 
-
-class Network : public Layer
+class Network 
 {
 	private:
-		size_t n_lay;
-		Layer  *head_lay_ptr;
-		Layer  *tail_lay_ptr;
-		Funct  *loss;
-		DevData   *data_ptr;
+		size_t           n_lay;
+		Layer            *head_lay_ptr;
+		Layer            *tail_lay_ptr;
+		Funct            *loss;
+		DevData          *data_ptr;
+
+		DevMatrix *del_curr;
+		DevMatrix *del_past;
+		DevMatrix *del_tmp;
+	 	cublasHandle_t   *handle;
 
 	public:
 
@@ -21,7 +25,7 @@ class Network : public Layer
 // Build network dynamically fowards (head to tail) from the output layer.  Single layer network (e.g. logistic regression) will have NULL input layer pointer,
 // but all networks must have an output.  The first entry of the dimension array is the size of the covariate space, and the last entry is the size of the output space.
 
-		 __device__ Network(int *, int, Funct *, Funct *, DevData *);
+		 __device__ Network(int *, int, Funct *, Funct *, DevData *, cublasHandle_t *, int);
 
 		 __device__ size_t depth(); 
 		 __device__ Layer  *head();
@@ -29,6 +33,7 @@ class Network : public Layer
 		 __device__ Funct  *lfun();
 		 __device__ DevData *data();
 
+		 __device__ void sethandle(cublasHandle_t *);
 		 __device__ ~Network();
 
 		 __device__ void depth(size_t i); 
@@ -41,5 +46,8 @@ class Network : public Layer
 	 	 __device__ void train(float, int *, int,  size_t);
 
 		 __device__ void print();
-		 __device__ void initialize(float, float);
+		 __device__ void initialize(unsigned long, float, float);
+
+		 __device__ void predict(DevData &, float *);
+		 __device__ float predictInner(DevData &, int);
 };
